@@ -82,6 +82,14 @@ a {
   background: #0f9b72;
 }
 
+.source-pill {
+  border: 1px solid rgba(12, 128, 100, 0.22);
+  border-radius: 999px;
+  background: rgba(12, 128, 100, 0.1);
+  color: #0a6f58;
+  padding: 4px 9px;
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;

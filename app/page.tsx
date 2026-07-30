@@ -1,38 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-
-type Draw = {
-  period: string;
-  date: string;
-  numbers: number[];
-};
+import { useEffect, useMemo, useState } from "react";
+import { seedHistory, type Draw } from "./lib/lotto-data";
 
 type Mode = "balanced" | "hot" | "cold" | "value";
 type EditMode = "lock" | "exclude";
 
-const history: Draw[] = [
-  { period: "115000184", date: "2026/07/30", numbers: [4, 7, 8, 16, 38] },
-  { period: "115000183", date: "2026/07/29", numbers: [5, 14, 32, 33, 36] },
-  { period: "115000182", date: "2026/07/28", numbers: [5, 8, 13, 23, 31] },
-  { period: "115000181", date: "2026/07/27", numbers: [2, 9, 11, 17, 30] },
-  { period: "115000180", date: "2026/07/26", numbers: [6, 15, 18, 25, 39] },
-  { period: "115000179", date: "2026/07/25", numbers: [1, 12, 19, 28, 35] },
-  { period: "115000178", date: "2026/07/23", numbers: [12, 14, 19, 25, 26] },
-  { period: "115000177", date: "2026/07/22", numbers: [3, 10, 16, 21, 37] },
-  { period: "115000176", date: "2026/07/21", numbers: [7, 11, 20, 24, 32] },
-  { period: "115000175", date: "2026/07/20", numbers: [4, 9, 18, 27, 34] },
-  { period: "115000174", date: "2026/07/19", numbers: [6, 13, 22, 29, 38] },
-  { period: "115000173", date: "2026/07/18", numbers: [8, 15, 17, 26, 33] },
-  { period: "115000172", date: "2026/07/17", numbers: [2, 10, 21, 30, 36] },
-  { period: "115000171", date: "2026/07/16", numbers: [1, 5, 14, 23, 31] },
-  { period: "115000170", date: "2026/07/15", numbers: [3, 12, 20, 28, 39] },
-  { period: "115000169", date: "2026/07/14", numbers: [7, 16, 24, 29, 35] },
-  { period: "115000168", date: "2026/07/13", numbers: [9, 18, 22, 27, 34] },
-  { period: "115000167", date: "2026/07/12", numbers: [6, 11, 15, 25, 37] },
-  { period: "115000166", date: "2026/07/11", numbers: [4, 13, 19, 30, 32] },
-  { period: "115000165", date: "2026/07/10", numbers: [2, 8, 17, 26, 38] },
-];
+const fallbackHistory = seedHistory;
 
 const allNumbers = Array.from({ length: 39 }, (_, index) => index + 1);
 
@@ -164,17 +138,37 @@ export default function Home() {
   const [locked, setLocked] = useState<number[]>([8, 16]);
   const [excluded, setExcluded] = useState<number[]>([]);
   const [generated, setGenerated] = useState<number[][]>([]);
+  const [history, setHistory] = useState<Draw[]>(fallbackHistory);
+  const [dataSource, setDataSource] = useState("示範資料");
 
-  const stats = useMemo(() => buildStats(history), []);
-  const latest = history[0];
-  const previous = history[1];
+  useEffect(() => {
+    let isMounted = true;
+
+    fetch("/api/draws")
+      .then((response) => response.json())
+      .then((payload: { draws?: Draw[]; source?: string }) => {
+        if (!isMounted || !payload.draws?.length) return;
+        setHistory(payload.draws);
+        setDataSource(payload.source === "database" ? "資料庫" : "示範資料");
+      })
+      .catch(() => {
+        if (isMounted) setDataSource("示範資料");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const stats = useMemo(() => buildStats(history), [history]);
+  const latest = history[0] ?? fallbackHistory[0];
+  const previous = history[1] ?? latest;
   const hot = [...stats].sort((a, b) => b.frequency - a.frequency).slice(0, 8);
   const cold = [...stats].sort((a, b) => b.missing - a.missing).slice(0, 8);
   const predictions = modes.map((item, index) => ({
     ...item,
     numbers: makeCombo(item.id, stats, locked, excluded, index),
   }));
-  const activeNumbers = generated.length ? generated : predictions.map((item) => item.numbers);
   const backtestBase = locked.length === 5 ? normalizeCombo(locked) : predictions[0].numbers;
   const backtest = history.map((draw) => getHits(backtestBase, draw));
   const prizes = backtest.reduce(
@@ -219,6 +213,7 @@ export default function Home() {
               <span>今彩539分析站</span>
               <span className="status-dot" />
               <span>下一期參考模型</span>
+              <span className="source-pill">{dataSource}</span>
             </div>
             <h1>539 Predictor Lab</h1>
             <p>
