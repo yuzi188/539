@@ -94,7 +94,80 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 28px;
+  margin-top: 18px;
+}
+
+.youtube-live-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+  max-width: 720px;
+  border: 1px solid rgba(55, 45, 30, 0.12);
+  border-radius: 8px;
+  background: #fffdf8;
+  padding: 12px;
+}
+
+.youtube-live-copy,
+.youtube-live-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.youtube-live-copy span,
+.youtube-live-meta span,
+.youtube-live-rule {
+  color: #70695e;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.youtube-live-copy strong {
+  color: #0a6f58;
+  font-size: 16px;
+}
+
+.youtube-live-meta a {
+  color: #0a6f58;
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.youtube-live-rule {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.youtube-frame {
+  overflow: hidden;
+  border-radius: 8px;
+  background: #1d1d1d;
+  aspect-ratio: 16 / 9;
+}
+
+.youtube-frame iframe,
+.youtube-empty {
+  width: 100%;
+  height: 100%;
+}
+
+.youtube-frame iframe {
+  display: block;
+  border: 0;
+}
+
+.youtube-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  padding: 18px;
+  text-align: center;
+  font-weight: 900;
 }
 
 .primary-button,

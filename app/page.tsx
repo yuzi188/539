@@ -5,6 +5,16 @@ import { seedHistory, type Draw } from "./lib/lotto-data";
 
 type Mode = "balanced" | "hot" | "cold" | "value";
 type EditMode = "lock" | "exclude";
+type YouTubeLive = {
+  videoId: string;
+  title: string;
+  url: string;
+  published?: string;
+  source?: string;
+  drawTargetDate?: string;
+  drawSwitchTime?: string;
+  isAfterDrawTime?: boolean;
+};
 
 const fallbackHistory = seedHistory;
 
@@ -142,6 +152,8 @@ export default function Home() {
   const [dataSource, setDataSource] = useState("示範資料");
   const [betAmount, setBetAmount] = useState(50);
   const [isLatestFiveOpen, setIsLatestFiveOpen] = useState(false);
+  const [youtubeLive, setYoutubeLive] = useState<YouTubeLive | null>(null);
+  const [youtubeStatus, setYoutubeStatus] = useState("正在抓取今日開獎直播");
 
   useEffect(() => {
     let isMounted = true;
@@ -168,6 +180,29 @@ export default function Home() {
       })
       .catch(() => {
         if (isMounted) void loadStaticHistory();
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetch("/api/youtube-live")
+      .then((response) => response.json())
+      .then((payload: YouTubeLive & { error?: string }) => {
+        if (!isMounted) return;
+        if (payload.videoId) {
+          setYoutubeLive(payload);
+          setYoutubeStatus(payload.source ?? "YouTube");
+        } else {
+          setYoutubeStatus(payload.error ?? "目前沒有抓到可播放開獎影片");
+        }
+      })
+      .catch(() => {
+        if (isMounted) setYoutubeStatus("目前沒有抓到可播放開獎影片");
       });
 
     return () => {
@@ -238,6 +273,37 @@ export default function Home() {
               以歷史開獎資料建立冷熱、遺漏、奇偶、大小、和值與尾數模型，
               每期留下預測紀錄，開獎後自動回測命中狀況。
             </p>
+            <section className="youtube-live-panel" aria-label="539 開獎直播播放器">
+              <div className="youtube-live-copy">
+                <span>每日自動抓取</span>
+                <strong>539 開獎直播</strong>
+              </div>
+              <div className="youtube-frame">
+                {youtubeLive?.videoId ? (
+                  <iframe
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    src={`https://www.youtube.com/embed/${youtubeLive.videoId}?rel=0&playsinline=1`}
+                    title={youtubeLive.title}
+                  />
+                ) : (
+                  <div className="youtube-empty">{youtubeStatus}</div>
+                )}
+              </div>
+              <div className="youtube-live-meta">
+                <span>{youtubeLive?.title ?? youtubeStatus}</span>
+                {youtubeLive?.url ? (
+                  <a href={youtubeLive.url} rel="noreferrer" target="_blank">
+                    到 YouTube 看直播
+                  </a>
+                ) : null}
+              </div>
+              <p className="youtube-live-rule">
+                {youtubeLive?.drawSwitchTime
+                  ? `台灣時間 ${youtubeLive.drawSwitchTime} 後自動切換當日開獎直播；目前對應 ${youtubeLive.drawTargetDate ?? "最近"}。`
+                  : "台灣時間 20:30 後自動切換當日開獎直播。"}
+              </p>
+            </section>
             <div className="hero-actions">
               <button className="primary-button" onClick={generate}>
                 產生本期參考
