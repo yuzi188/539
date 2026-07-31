@@ -879,6 +879,22 @@ a {
   margin-top: 14px;
 }
 
+.backtest-panel {
+  scroll-margin-top: 18px;
+}
+
+.calculation-message {
+  margin-top: 12px;
+  border: 1px solid rgba(12, 128, 100, 0.18);
+  border-radius: 8px;
+  background: rgba(12, 128, 100, 0.09);
+  color: #0a6f58;
+  padding: 11px 12px;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.5;
+}
+
 .backtest-intro,
 .backtest-formula {
   margin: 12px 0 0;
@@ -1115,6 +1131,36 @@ a {
   width: 100%;
   justify-content: center;
   min-height: 48px;
+}
+
+.backtest-action-button {
+  margin-top: 12px;
+}
+
+.backtest-mini-result {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.backtest-mini-result div {
+  border: 1px solid rgba(55, 45, 30, 0.1);
+  border-radius: 8px;
+  background: #fffaf2;
+  padding: 10px 12px;
+}
+
+.backtest-mini-result span {
+  display: block;
+  color: #70695e;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.backtest-mini-result strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
 }
 
 .mini-summary {
@@ -1726,6 +1772,25 @@ a {
 
 .dark-mode .history-table-head {
   background: #151d17;
+}
+
+.dark-mode .calculation-message {
+  border-color: rgba(116, 225, 189, 0.2);
+  background: rgba(30, 185, 137, 0.12);
+  color: #74e1bd;
+}
+
+.dark-mode .backtest-mini-result div {
+  border-color: rgba(232, 226, 214, 0.12);
+  background: rgba(24, 31, 26, 0.92);
+}
+
+.dark-mode .backtest-mini-result span {
+  color: #c9c1b4;
+}
+
+.dark-mode .backtest-mini-result strong {
+  color: #f7f2e8;
 }
 
 @media (max-width: 980px) {

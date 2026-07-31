@@ -252,7 +252,9 @@ export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [savingPrediction, setSavingPrediction] = useState(false);
   const [predictionMessage, setPredictionMessage] = useState("");
+  const [calculationMessage, setCalculationMessage] = useState("");
   const predictionRef = useRef<HTMLDivElement | null>(null);
+  const backtestRef = useRef<HTMLElement | null>(null);
   const playRule = playRules.find((item) => item.id === playType) ?? playRules[1];
   const maxSelectable = playType === "official5" ? 5 : 12;
 
@@ -406,6 +408,26 @@ export default function Home() {
         ? items.filter((item) => item !== number)
         : normalizeCombo([...items, number]),
     );
+  }
+
+  function runBacktestCalculation() {
+    if (!backtestReady) {
+      setCalculationMessage(`請至少選 ${playRule.size} 個號碼，才能試算 ${playRule.label}。`);
+      window.setTimeout(() => {
+        document.getElementById("number-lab")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 30);
+      return;
+    }
+
+    setCalculationMessage(
+      `${playRule.label}已完成試算：自動拆 ${ticketCount.toLocaleString()} 注，近 ${history.length.toLocaleString()} 期命中 ${backtestWinCount.toLocaleString()} 期。`,
+    );
+    window.setTimeout(() => {
+      backtestRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 30);
   }
 
   function generate() {
@@ -796,11 +818,14 @@ export default function Home() {
               </div>
             </section>
 
-            <section className="data-panel">
+            <section className="data-panel backtest-panel" id="backtest-results" ref={backtestRef}>
               <div className="section-title">
                 <h2>回測試算</h2>
                 <span>{backtestLabel}</span>
               </div>
+              {calculationMessage ? (
+                <div className="calculation-message">{calculationMessage}</div>
+              ) : null}
               <p className="backtest-intro">
                 這裡只做玩法模擬。官方 5 號用命中碼數回測；二星、三星、四星會把你選的號碼自動連碰拆組，再套回近 {history.length.toLocaleString()} 期。
               </p>
@@ -979,6 +1004,34 @@ export default function Home() {
             <div>
               <span>已排除</span>
               <strong>{excluded.length ? excluded.map(pad).join(" ") : "無"}</strong>
+            </div>
+          </div>
+
+          <button
+            className="primary-button wide backtest-action-button"
+            onClick={runBacktestCalculation}
+            type="button"
+          >
+            開始試算
+          </button>
+
+          <div className="backtest-mini-result" aria-live="polite">
+            <div>
+              <span>目前玩法</span>
+              <strong>{playRule.label}</strong>
+            </div>
+            <div>
+              <span>投入 / 派彩</span>
+              <strong>
+                {cost.toLocaleString()} / {prizes.toLocaleString()} 元
+              </strong>
+            </div>
+            <div>
+              <span>試算損益</span>
+              <strong className={profit >= 0 ? "profit-positive" : "profit-negative"}>
+                {profit >= 0 ? "+" : ""}
+                {profit.toLocaleString()} 元
+              </strong>
             </div>
           </div>
 
