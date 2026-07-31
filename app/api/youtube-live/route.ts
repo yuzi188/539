@@ -4,6 +4,7 @@ const DEFAULT_CHANNEL_ID = "UCX9q-HI41sFuh1Gs5X_ZZCw";
 const DEFAULT_SOURCE_URL = "https://www.youtube.com/@48ilottery48/streams";
 const DRAW_HOUR = 20;
 const DRAW_MINUTE = 30;
+const JSON_HEADERS = { "Cache-Control": "no-store" };
 
 type TaipeiDateParts = {
   year: number;
@@ -240,7 +241,7 @@ export async function GET() {
           drawSwitchTime: target.switchTime,
           isAfterDrawTime: target.isAfterDrawTime,
         },
-        { headers: { "Cache-Control": "public, max-age=300" } },
+        { headers: JSON_HEADERS },
       );
     }
 
@@ -257,7 +258,7 @@ export async function GET() {
       const latest = pickByDrawTime(parseStreamsPage(await pageResponse.text()));
       if (latest) {
         return Response.json(latest, {
-          headers: { "Cache-Control": "public, max-age=300" },
+          headers: JSON_HEADERS,
         });
       }
     }
@@ -276,7 +277,7 @@ export async function GET() {
     if (!latest) throw new Error("找不到可播放的開獎直播影片。");
 
     return Response.json(latest, {
-      headers: { "Cache-Control": "public, max-age=300" },
+      headers: JSON_HEADERS,
     });
   } catch (error) {
     return Response.json(
@@ -284,7 +285,7 @@ export async function GET() {
         error: error instanceof Error ? error.message : "無法讀取 YouTube 開獎直播。",
         source: "YouTube",
       },
-      { status: 502, headers: { "Cache-Control": "public, max-age=60" } },
+      { status: 502, headers: JSON_HEADERS },
     );
   }
 }

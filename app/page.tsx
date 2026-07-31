@@ -154,6 +154,8 @@ export default function Home() {
   const [isLatestFiveOpen, setIsLatestFiveOpen] = useState(false);
   const [youtubeLive, setYoutubeLive] = useState<YouTubeLive | null>(null);
   const [youtubeStatus, setYoutubeStatus] = useState("正在抓取今日開獎直播");
+  const [youtubeReloadKey, setYoutubeReloadKey] = useState(0);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -190,23 +192,29 @@ export default function Home() {
   useEffect(() => {
     let isMounted = true;
 
-    fetch("/api/youtube-live")
-      .then((response) => response.json())
-      .then((payload: YouTubeLive & { error?: string }) => {
-        if (!isMounted) return;
-        if (payload.videoId) {
-          setYoutubeLive(payload);
-          setYoutubeStatus(payload.source ?? "YouTube");
-        } else {
-          setYoutubeStatus(payload.error ?? "目前沒有抓到可播放開獎影片");
-        }
-      })
-      .catch(() => {
-        if (isMounted) setYoutubeStatus("目前沒有抓到可播放開獎影片");
-      });
+    const loadLive = () => {
+      fetch(`/api/youtube-live?ts=${Date.now()}`, { cache: "no-store" })
+        .then((response) => response.json())
+        .then((payload: YouTubeLive & { error?: string }) => {
+          if (!isMounted) return;
+          if (payload.videoId) {
+            setYoutubeLive(payload);
+            setYoutubeStatus(payload.source ?? "YouTube");
+          } else {
+            setYoutubeStatus(payload.error ?? "目前沒有抓到可播放開獎影片");
+          }
+        })
+        .catch(() => {
+          if (isMounted) setYoutubeStatus("目前沒有抓到可播放開獎影片");
+        });
+    };
+
+    loadLive();
+    const timer = window.setInterval(loadLive, 60000);
 
     return () => {
       isMounted = false;
+      window.clearInterval(timer);
     };
   }, []);
 
@@ -283,8 +291,10 @@ export default function Home() {
                   <iframe
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
+                    key={`${youtubeLive.videoId}-${youtubeReloadKey}`}
+                    loading="eager"
                     referrerPolicy="strict-origin-when-cross-origin"
-                    src={`https://www.youtube.com/embed/${youtubeLive.videoId}?autoplay=1&mute=1&rel=0&playsinline=1`}
+                    src={`https://www.youtube.com/embed/${youtubeLive.videoId}?autoplay=1&mute=1&rel=0&playsinline=1&controls=1`}
                     title={youtubeLive.title}
                   />
                 ) : (
@@ -294,9 +304,14 @@ export default function Home() {
               <div className="youtube-live-meta">
                 <span>{youtubeLive?.title ?? youtubeStatus}</span>
                 {youtubeLive?.url ? (
-                  <a href={youtubeLive.url} rel="noreferrer" target="_blank">
-                    到 YouTube 看直播
-                  </a>
+                  <div className="youtube-live-actions">
+                    <button onClick={() => setYoutubeReloadKey((value) => value + 1)} type="button">
+                      重新播放
+                    </button>
+                    <a href={youtubeLive.url} rel="noreferrer" target="_blank">
+                      到 YouTube 看直播
+                    </a>
+                  </div>
                 ) : null}
               </div>
               <p className="youtube-live-rule">
@@ -382,38 +397,51 @@ export default function Home() {
                 <span>第一次使用</span>
                 <h2 id="guide-title">照這 4 步看懂本期參考</h2>
               </div>
-              <a className="secondary-button" href="#lab">
-                開始操作
-              </a>
-              <a className="secondary-button" href="/history">
-                查看歷史開獎
-              </a>
+              <div className="guide-actions">
+                <button
+                  className="secondary-button"
+                  onClick={() => setIsGuideOpen((value) => !value)}
+                  type="button"
+                >
+                  {isGuideOpen ? "收合說明" : "展開說明"}
+                </button>
+                <a className="secondary-button" href="#lab">
+                  開始操作
+                </a>
+                <a className="secondary-button" href="/history">
+                  查看歷史開獎
+                </a>
+              </div>
             </div>
-            <div className="guide-grid">
-              <article>
-                <strong>1</strong>
-                <h3>先看資料來源</h3>
-                <p>左上角顯示「資料庫」或「5年爬蟲資料」時，代表分析已使用歷史開獎資料。</p>
-              </article>
-              <article>
-                <strong>2</strong>
-                <h3>選擇分析模型</h3>
-                <p>平衡適合一般參考；熱號看近期高頻；補冷看遺漏較久；和值避開極端組合。</p>
-              </article>
-              <article>
-                <strong>3</strong>
-                <h3>鎖定或排除號碼</h3>
-                <p>右側先切換「鎖定」或「排除」，再點 01-39。最多鎖定 5 個號碼。</p>
-              </article>
-              <article>
-                <strong>4</strong>
-                <h3>產生後看回測</h3>
-                <p>按「重新產生」取得組合，再看近 5 年命中 2 碼以上的次數與模擬成本。</p>
-              </article>
-            </div>
-            <p className="guide-note">
-              使用規則：本頁只做數據分析與號碼參考，不保證中獎；建議每期先看資料來源，再用固定模型產生組合，避免憑感覺加碼。
-            </p>
+            {isGuideOpen ? (
+              <>
+                <div className="guide-grid">
+                  <article>
+                    <strong>1</strong>
+                    <h3>先看資料來源</h3>
+                    <p>左上角顯示「資料庫」或「5年爬蟲資料」時，代表分析已使用歷史開獎資料。</p>
+                  </article>
+                  <article>
+                    <strong>2</strong>
+                    <h3>選擇分析模型</h3>
+                    <p>平衡適合一般參考；熱號看近期高頻；補冷看遺漏較久；和值避開極端組合。</p>
+                  </article>
+                  <article>
+                    <strong>3</strong>
+                    <h3>鎖定或排除號碼</h3>
+                    <p>右側先切換「鎖定」或「排除」，再點 01-39。最多鎖定 5 個號碼。</p>
+                  </article>
+                  <article>
+                    <strong>4</strong>
+                    <h3>產生後看回測</h3>
+                    <p>按「重新產生」取得組合，再看近 5 年命中 2 碼以上的次數與模擬成本。</p>
+                  </article>
+                </div>
+                <p className="guide-note">
+                  使用規則：本頁只做數據分析與號碼參考，不保證中獎；建議每期先看資料來源，再用固定模型產生組合，避免憑感覺加碼。
+                </p>
+              </>
+            ) : null}
           </div>
         </div>
       </section>
