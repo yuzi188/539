@@ -301,8 +301,10 @@ export default function Home() {
               </div>
               <p className="youtube-live-rule">
                 {youtubeLive?.drawSwitchTime
-                  ? `台灣時間 ${youtubeLive.drawSwitchTime} 後自動切換當日開獎直播；目前對應 ${youtubeLive.drawTargetDate ?? "最近"}。`
-                  : "台灣時間 20:30 後自動切換當日開獎直播。"}
+                  ? youtubeLive.isAfterDrawTime
+                    ? `已到今日開獎時間，正在播放當日開獎影片；目前對應 ${youtubeLive.drawTargetDate ?? "今天"}。`
+                    : `今日尚未到開獎時間，先播放上一個開獎日影片；台灣時間 ${youtubeLive.drawSwitchTime} 後自動切換當日。`
+                  : "今日尚未到開獎時間會播放昨天，台灣時間 20:30 後自動切換當日。"}
                 影片會先靜音自動播放，若瀏覽器擋住請直接按播放器。
               </p>
             </section>
