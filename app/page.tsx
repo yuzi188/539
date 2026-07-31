@@ -283,7 +283,8 @@ export default function Home() {
                   <iframe
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
-                    src={`https://www.youtube.com/embed/${youtubeLive.videoId}?rel=0&playsinline=1`}
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    src={`https://www.youtube.com/embed/${youtubeLive.videoId}?autoplay=1&mute=1&rel=0&playsinline=1`}
                     title={youtubeLive.title}
                   />
                 ) : (
@@ -302,6 +303,7 @@ export default function Home() {
                 {youtubeLive?.drawSwitchTime
                   ? `台灣時間 ${youtubeLive.drawSwitchTime} 後自動切換當日開獎直播；目前對應 ${youtubeLive.drawTargetDate ?? "最近"}。`
                   : "台灣時間 20:30 後自動切換當日開獎直播。"}
+                影片會先靜音自動播放，若瀏覽器擋住請直接按播放器。
               </p>
             </section>
             <div className="hero-actions">
