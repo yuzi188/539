@@ -1,6 +1,7 @@
 import { and, eq, gt } from "drizzle-orm";
 import { getDb } from "../../db";
 import { memberSessions, members } from "../../db/schema";
+import { ensureMemberTables } from "./member-db";
 
 export const SESSION_COOKIE = "lotto539_member_session";
 const SESSION_DAYS = 30;
@@ -75,6 +76,8 @@ export async function verifyPassword(
 }
 
 export async function createSession(memberId: number) {
+  await ensureMemberTables();
+
   const token = randomBase64(32);
   const tokenHash = await sha256(token);
   const expiresAt = new Date(
@@ -113,6 +116,8 @@ export function clearSessionCookie() {
 }
 
 export async function getCurrentMember(request: Request) {
+  await ensureMemberTables();
+
   const token = parseCookie(request.headers.get("cookie"), SESSION_COOKIE);
   if (!token) return null;
 

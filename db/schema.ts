@@ -66,11 +66,38 @@ export const betOrders = sqliteTable(
   },
   (table) => ({
     memberCreatedIdx: index("bet_orders_member_created_idx").on(
-      table.memberEmail,
+      table.memberId,
       table.createdAt,
     ),
     memberPeriodIdx: index("bet_orders_member_period_idx").on(
-      table.memberEmail,
+      table.memberId,
+      table.period,
+    ),
+  }),
+);
+
+export const memberPredictions = sqliteTable(
+  "member_predictions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    memberId: integer("member_id").notNull(),
+    period: text("period").notNull(),
+    drawDate: text("draw_date").notNull().default(""),
+    model: text("model").notNull(),
+    setsJson: text("sets_json").notNull(),
+    lockedJson: text("locked_json").notNull().default("[]"),
+    excludedJson: text("excluded_json").notNull().default("[]"),
+    note: text("note").notNull().default(""),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => ({
+    memberCreatedIdx: index("member_predictions_member_created_idx").on(
+      table.memberId,
+      table.createdAt,
+    ),
+    memberPeriodIdx: index("member_predictions_member_period_idx").on(
+      table.memberId,
       table.period,
     ),
   }),

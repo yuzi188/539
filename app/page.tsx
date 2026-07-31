@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { seedHistory, type Draw } from "./lib/lotto-data";
 
 type Mode = "balanced" | "hot" | "cold" | "value";
@@ -27,7 +27,31 @@ const modes: { id: Mode; label: string; detail: string }[] = [
   { id: "value", label: "和值", detail: "避開極端和值" },
 ];
 
+const modeDescriptions: Record<Mode, string> = {
+  balanced: "平衡會把冷熱、奇偶、大小混合，適合一般參考。",
+  hot: "熱號會優先選近期常開的號碼，偏向追近期趨勢。",
+  cold: "補冷會優先選比較久沒開的號碼，偏向補遺漏。",
+  value: "和值會避開總和太高或太低的組合，讓號碼落在中間區間。",
+};
+
 const pad = (value: number) => value.toString().padStart(2, "0");
+
+function nextPeriod(period: string) {
+  const value = Number(period);
+  return Number.isFinite(value) ? String(value + 1) : period;
+}
+
+function nextDrawDate(date: string) {
+  const [year, month, day] = date.split(/[/-]/).map(Number);
+  if (!year || !month || !day) return "";
+
+  const next = new Date(year, month - 1, day);
+  do {
+    next.setDate(next.getDate() + 1);
+  } while (next.getDay() === 0);
+
+  return `${next.getFullYear()}/${pad(next.getMonth() + 1)}/${pad(next.getDate())}`;
+}
 
 function sum(numbers: number[]) {
   return numbers.reduce((total, number) => total + number, 0);
@@ -156,6 +180,19 @@ export default function Home() {
   const [youtubeStatus, setYoutubeStatus] = useState("正在抓取今日開獎直播");
   const [youtubeReloadKey, setYoutubeReloadKey] = useState(0);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isLogicOpen, setIsLogicOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [savingPrediction, setSavingPrediction] = useState(false);
+  const [predictionMessage, setPredictionMessage] = useState("");
+  const predictionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setIsDarkMode(window.localStorage.getItem("lotto539-theme") === "dark");
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("lotto539-theme", isDarkMode ? "dark" : "light");
+  }, [isDarkMode]);
 
   useEffect(() => {
     let isMounted = true;
@@ -220,6 +257,8 @@ export default function Home() {
 
   const stats = useMemo(() => buildStats(history), [history]);
   const latest = history[0] ?? fallbackHistory[0];
+  const targetPeriod = nextPeriod(latest.period);
+  const targetDate = nextDrawDate(latest.date);
   const latestFive = history.slice(0, 5);
   const hot = [...stats].sort((a, b) => b.frequency - a.frequency).slice(0, 8);
   const cold = [...stats].sort((a, b) => b.missing - a.missing).slice(0, 8);
@@ -227,6 +266,7 @@ export default function Home() {
     ...item,
     numbers: makeCombo(item.id, stats, locked, excluded, index),
   }));
+  const currentMode = modes.find((item) => item.id === mode) ?? modes[0];
   const backtestBase = locked.length === 5 ? normalizeCombo(locked) : predictions[0].numbers;
   const backtest = history.map((draw) => getHits(backtestBase, draw));
   const backtestWinCount = backtest.filter((hit) => hit >= 2).length;
@@ -260,14 +300,73 @@ export default function Home() {
   }
 
   function generate() {
+    setPredictionMessage("");
     setGenerated(
       Array.from({ length: 6 }, () => makeFreshCombo(mode, stats, locked, excluded)),
     );
+    window.setTimeout(() => {
+      predictionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }
+
+  async function savePrediction() {
+    if (!generated.length) {
+      setPredictionMessage("請先按「產生本期預測」，再保存到會員。");
+      return;
+    }
+
+    setSavingPrediction(true);
+    setPredictionMessage("");
+    try {
+      const response = await fetch("/api/member/predictions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          period: targetPeriod,
+          drawDate: targetDate,
+          model: mode,
+          sets: generated,
+          locked,
+          excluded,
+          note: `${currentMode.label}模型自動保存`,
+        }),
+      });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "保存失敗。");
+      setPredictionMessage("已保存到會員中心，開獎後會自動顯示命中數。");
+    } catch (error) {
+      setPredictionMessage(
+        error instanceof Error ? error.message : "保存失敗，請稍後再試。",
+      );
+    } finally {
+      setSavingPrediction(false);
+    }
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f2ea] text-[#22201c]">
+    <main className={`min-h-screen bg-[#f6f2ea] text-[#22201c] ${isDarkMode ? "dark-mode" : ""}`}>
       <section className="hero-band">
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+          <div className="top-action-row">
+            <a className="secondary-button" href="#lab">
+              進入分析台
+            </a>
+            <a className="secondary-button" href="/history">
+              歷史開獎
+            </a>
+            <a className="secondary-button" href="/member">
+              會員中心
+            </a>
+            <button
+              aria-pressed={isDarkMode}
+              className="secondary-button theme-toggle"
+              onClick={() => setIsDarkMode((value) => !value)}
+              type="button"
+            >
+              {isDarkMode ? "淺色模式" : "深色模式"}
+            </button>
+          </div>
+        </div>
         <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8">
           <div className="headline-panel">
             <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[#6c4a00]">
@@ -323,20 +422,6 @@ export default function Home() {
                 影片會先靜音自動播放，若瀏覽器擋住請直接按播放器。
               </p>
             </section>
-            <div className="hero-actions">
-              <button className="primary-button" onClick={generate}>
-                產生本期參考
-              </button>
-              <a className="secondary-button" href="#lab">
-                進入分析台
-              </a>
-              <a className="secondary-button" href="/history">
-                歷史開獎
-              </a>
-              <a className="secondary-button" href="/member">
-                會員中心
-              </a>
-            </div>
           </div>
 
           <div className="latest-panel">
@@ -447,26 +532,101 @@ export default function Home() {
       </section>
 
       <section id="lab" className="mx-auto grid max-w-7xl gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
-        <div className="space-y-4">
+        <div className="lab-main">
+          <div className="workflow-strip" aria-label="操作流程">
+            <span>1 選模型</span>
+            <span>2 鎖定或排除號碼</span>
+            <span>3 產生 6 組參考</span>
+          </div>
+
           <div className="toolbar">
             <div>
               <h2>每期預測</h2>
               <p>固定保存模型輸出，開獎後核對命中數。</p>
             </div>
-            <div className="segmented">
-              {modes.map((item) => (
-                <button
-                  className={mode === item.id ? "active" : ""}
-                  key={item.id}
-                  onClick={() => setMode(item.id)}
-                >
-                  {item.label}
-                </button>
-              ))}
+            <div className="toolbar-actions">
+              <div className="segmented">
+                {modes.map((item) => (
+                  <button
+                    aria-label={`${item.label}模型：${item.detail}`}
+                    className={mode === item.id ? "active" : ""}
+                    key={item.id}
+                    onClick={() => setMode(item.id)}
+                    title={item.detail}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <button className="primary-button generate-button" onClick={generate} type="button">
+                產生本期預測
+              </button>
             </div>
           </div>
 
-          <div className="prediction-grid">
+          <div className="mode-helper" aria-live="polite">
+            <span>模型功能</span>
+            <strong>{currentMode.label}</strong>
+            <p>{modeDescriptions[mode]}</p>
+          </div>
+
+          <div className={`logic-panel ${isLogicOpen ? "open" : ""}`}>
+            <button
+              aria-expanded={isLogicOpen}
+              onClick={() => setIsLogicOpen((value) => !value)}
+              type="button"
+            >
+              <span>預測邏輯</span>
+              <strong>{isLogicOpen ? "收合" : "展開"}</strong>
+            </button>
+            {isLogicOpen ? (
+              <div className="logic-grid">
+                <article>
+                  <strong>資料</strong>
+                  <p>先讀取歷史開獎，統計每個號碼近期出現次數與多久沒開。</p>
+                </article>
+                <article>
+                  <strong>模型</strong>
+                  <p>依照平衡、熱號、補冷、和值四種模型，給每個號碼不同權重。</p>
+                </article>
+                <article>
+                  <strong>條件</strong>
+                  <p>會套用你右側鎖定與排除的號碼，再檢查奇偶、大小、和值與尾數分散。</p>
+                </article>
+                <article>
+                  <strong>產生</strong>
+                  <p>按下產生後，依權重抽出 6 組 5 碼參考，每次會有些微變化。</p>
+                </article>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="result-heading" ref={predictionRef}>
+            <div>
+              <span>產生結果</span>
+              <h3>本期號碼參考</h3>
+            </div>
+            <div className="result-actions">
+              <strong>
+                {generated.length
+                  ? `已產生 ${generated.length} 組 / 第 ${targetPeriod} 期`
+                  : "預覽 4 種模型"}
+              </strong>
+              <button
+                className="secondary-button save-prediction-button"
+                disabled={!generated.length || savingPrediction}
+                onClick={savePrediction}
+                type="button"
+              >
+                {savingPrediction ? "保存中" : "保存到會員"}
+              </button>
+            </div>
+          </div>
+          {predictionMessage ? (
+            <div className="member-message compact-message">{predictionMessage}</div>
+          ) : null}
+
+          <div className="prediction-grid" aria-label="本期號碼參考結果">
             {(generated.length
               ? generated.map((numbers, index) => ({
                   id: `gen-${index}`,
@@ -640,10 +800,6 @@ export default function Home() {
               );
             })}
           </div>
-
-          <button className="primary-button wide" onClick={generate}>
-            重新產生
-          </button>
 
           <div className="mini-summary">
             <div>

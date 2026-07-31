@@ -7,6 +7,7 @@ import {
   normalizeEmail,
   sessionCookie,
 } from "../../../lib/member-auth";
+import { ensureMemberTables, toMemberErrorMessage } from "../../../lib/member-db";
 
 function validate(payload: { email?: string; password?: string; displayName?: string }) {
   const email = normalizeEmail(payload.email ?? "");
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
       displayName?: string;
     };
     const input = validate(payload);
+    await ensureMemberTables();
     const db = getDb();
     const existing = await db
       .select({ id: members.id })
@@ -74,7 +76,6 @@ export async function POST(request: Request) {
       },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return Response.json({ error: message }, { status: 400 });
+    return Response.json({ error: toMemberErrorMessage(error) }, { status: 400 });
   }
 }

@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { betOrders } from "../../../../db/schema";
 import { getCurrentMember } from "../../../lib/member-auth";
+import { ensureMemberTables, toMemberErrorMessage } from "../../../lib/member-db";
 
 type IncomingOrder = {
   period?: string;
@@ -62,6 +63,7 @@ export async function GET(request: Request) {
     if (!member) {
       return Response.json({ error: "請先登入會員。" }, { status: 401 });
     }
+    await ensureMemberTables();
 
     const rows = await getDb()
       .select()
@@ -79,8 +81,7 @@ export async function GET(request: Request) {
       orders: rows.map(mapOrder),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return Response.json({ error: message }, { status: 500 });
+    return Response.json({ error: toMemberErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -90,6 +91,7 @@ export async function POST(request: Request) {
     if (!member) {
       return Response.json({ error: "請先登入會員。" }, { status: 401 });
     }
+    await ensureMemberTables();
 
     const payload = (await request.json()) as IncomingOrder;
     const order = validateOrder(payload);
@@ -115,7 +117,6 @@ export async function POST(request: Request) {
 
     return Response.json({ order: mapOrder(saved) }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return Response.json({ error: message }, { status: 400 });
+    return Response.json({ error: toMemberErrorMessage(error) }, { status: 400 });
   }
 }
