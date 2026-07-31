@@ -140,6 +140,7 @@ export default function Home() {
   const [generated, setGenerated] = useState<number[][]>([]);
   const [history, setHistory] = useState<Draw[]>(fallbackHistory);
   const [dataSource, setDataSource] = useState("示範資料");
+  const [betAmount, setBetAmount] = useState(50);
 
   useEffect(() => {
     let isMounted = true;
@@ -188,7 +189,7 @@ export default function Home() {
     (acc, hit) => acc + (hit === 5 ? 8000000 : hit === 4 ? 20000 : hit === 3 ? 300 : hit === 2 ? 50 : 0),
     0,
   );
-  const cost = history.length * 50;
+  const cost = history.length * betAmount;
 
   function toggleNumber(number: number) {
     if (editMode === "lock") {
@@ -404,6 +405,18 @@ export default function Home() {
                 <h2>回測</h2>
                 <span>{locked.length === 5 ? "鎖定號碼" : "平衡主推"}</span>
               </div>
+              <label className="inline-amount-control">
+                每期投注金額
+                <input
+                  min={0}
+                  step={50}
+                  type="number"
+                  value={betAmount}
+                  onChange={(event) =>
+                    setBetAmount(Math.max(0, Number(event.target.value) || 0))
+                  }
+                />
+              </label>
               <div className="balls-row compact">
                 {backtestBase.map((number) => (
                   <span className="ball muted" key={number}>

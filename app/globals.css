@@ -450,6 +450,28 @@ a {
   margin-top: 14px;
 }
 
+.inline-amount-control {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+  color: #4b463d;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.inline-amount-control input {
+  min-height: 40px;
+  min-width: 0;
+  border: 1px solid rgba(55, 45, 30, 0.16);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #22201c;
+  padding: 0 10px;
+  font: inherit;
+}
+
 .hit-strip {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -756,6 +778,10 @@ a {
   .latest-grid,
   .backtest-grid,
   .rank-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .inline-amount-control {
     grid-template-columns: 1fr;
   }
 
