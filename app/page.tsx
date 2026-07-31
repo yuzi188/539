@@ -100,6 +100,15 @@ function getHits(candidate: number[], draw: Draw) {
   return candidate.filter((number) => draw.numbers.includes(number)).length;
 }
 
+function cleanNumericInput(value: string) {
+  return value.replace(/\D/g, "").replace(/^0+/, "");
+}
+
+function toPositiveAmount(value: string, fallback = 1) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 ? amount : fallback;
+}
+
 function buildCombinations(numbers: number[], size: number, cap = 3000) {
   const normalized = normalizeCombo(numbers);
   const results: number[][] = [];
@@ -241,10 +250,10 @@ export default function Home() {
   const [generated, setGenerated] = useState<number[][]>([]);
   const [history, setHistory] = useState<Draw[]>(fallbackHistory);
   const [dataSource, setDataSource] = useState("示範資料");
-  const [betAmount, setBetAmount] = useState(50);
+  const [betAmountInput, setBetAmountInput] = useState("50");
   const [backtestPeriodLimit, setBacktestPeriodLimit] = useState(100);
   const [playType, setPlayType] = useState<PlayType>("star2");
-  const [playPayout, setPlayPayout] = useState(5300);
+  const [playPayoutInput, setPlayPayoutInput] = useState("5300");
   const [isLatestFiveOpen, setIsLatestFiveOpen] = useState(false);
   const [youtubeLive, setYoutubeLive] = useState<YouTubeLive | null>(null);
   const [youtubeStatus, setYoutubeStatus] = useState("正在抓取今日開獎直播");
@@ -259,13 +268,15 @@ export default function Home() {
   const backtestRef = useRef<HTMLElement | null>(null);
   const playRule = playRules.find((item) => item.id === playType) ?? playRules[1];
   const maxSelectable = playType === "official5" ? 5 : 12;
+  const betAmount = toPositiveAmount(betAmountInput);
+  const playPayout = toPositiveAmount(playPayoutInput, playRule.defaultPrize);
 
   useEffect(() => {
     setLocked((items) => items.slice(0, maxSelectable));
   }, [maxSelectable]);
 
   useEffect(() => {
-    setPlayPayout(playRule.defaultPrize);
+    setPlayPayoutInput(String(playRule.defaultPrize));
   }, [playRule.defaultPrize]);
 
   useEffect(() => {
@@ -856,26 +867,32 @@ export default function Home() {
                 <label className="inline-amount-control">
                   每注金額
                   <input
-                    min={0}
+                    min={1}
                     step={10}
                     type="number"
-                    value={betAmount}
+                    value={betAmountInput}
+                    onBlur={() => setBetAmountInput(String(toPositiveAmount(betAmountInput)))}
                     onChange={(event) =>
-                      setBetAmount(Math.max(0, Number(event.target.value) || 0))
+                      setBetAmountInput(cleanNumericInput(event.target.value))
                     }
+                    onFocus={(event) => event.currentTarget.select()}
                   />
                 </label>
                 {playType !== "official5" ? (
                   <label className="inline-amount-control">
                     每注模擬派彩
                     <input
-                      min={0}
+                      min={1}
                       step={100}
                       type="number"
-                      value={playPayout}
-                      onChange={(event) =>
-                        setPlayPayout(Math.max(0, Number(event.target.value) || 0))
+                      value={playPayoutInput}
+                      onBlur={() =>
+                        setPlayPayoutInput(String(toPositiveAmount(playPayoutInput, playRule.defaultPrize)))
                       }
+                      onChange={(event) =>
+                        setPlayPayoutInput(cleanNumericInput(event.target.value))
+                      }
+                      onFocus={(event) => event.currentTarget.select()}
                     />
                   </label>
                 ) : null}
