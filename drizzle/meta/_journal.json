@@ -15,6 +15,13 @@
       "when": 1785480000000,
       "tag": "0001_seed_lotto539_history",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785529000000,
+      "tag": "0002_member_registration_orders",
+      "breakpoints": true
     }
   ]
 }

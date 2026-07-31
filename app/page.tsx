@@ -240,6 +240,9 @@ export default function Home() {
               <a className="secondary-button" href="#lab">
                 進入分析台
               </a>
+              <a className="secondary-button" href="/member">
+                會員中心
+              </a>
             </div>
           </div>
 
