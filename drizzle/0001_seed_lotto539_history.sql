@@ -1,5 +1,5 @@
--- Seed 5 years of Daily Cash / ??539 draw history from TaiwanLotteryCrawler.
--- Range: 2021-08-02 to 2026-07-30; rows: 1570.
+-- Seed Daily Cash / 539 draw history from TaiwanLotteryCrawler.
+-- Range: 2021/08/02 to 2026/07/30; rows: 1570.
 INSERT OR IGNORE INTO `draws` (`game`,`period`,`draw_date`,`n1`,`n2`,`n3`,`n4`,`n5`,`source`,`raw_json`) VALUES ('daily_cash','110000183','2021/08/02',4,24,25,28,33,'TaiwanLotteryCrawler','{"period":"110000183","date":"2021/08/02","numbers":[4,24,25,28,33],"source":"TaiwanLotteryCrawler","raw":{"期別":110000183,"開獎日期":"2021-08-02T00:00:00","獎號":[4,24,25,28,33]}}');
 --> statement-breakpoint
 INSERT OR IGNORE INTO `draws` (`game`,`period`,`draw_date`,`n1`,`n2`,`n3`,`n4`,`n5`,`source`,`raw_json`) VALUES ('daily_cash','110000184','2021/08/03',5,9,24,25,36,'TaiwanLotteryCrawler','{"period":"110000184","date":"2021/08/03","numbers":[5,9,24,25,36],"source":"TaiwanLotteryCrawler","raw":{"期別":110000184,"開獎日期":"2021-08-03T00:00:00","獎號":[5,9,24,25,36]}}');
