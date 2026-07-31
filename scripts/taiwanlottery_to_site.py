@@ -16,6 +16,13 @@ def parse_numbers(value):
     return []
 
 
+def normalize_date(value):
+    text = str(value).strip().replace("-", "/")
+    if "T" in text:
+        text = text.split("T", 1)[0].replace("-", "/")
+    return text
+
+
 def normalize_record(record, source):
     period = str(
         record.get("期別")
@@ -24,12 +31,12 @@ def normalize_record(record, source):
         or record.get("drawNo")
         or ""
     ).strip()
-    date = str(
+    date = normalize_date(
         record.get("開獎日期")
         or record.get("date")
         or record.get("drawDate")
         or datetime.now().strftime("%Y/%m/%d")
-    ).strip()
+    )
     numbers = parse_numbers(
         record.get("獎號")
         or record.get("numbers")
@@ -42,7 +49,7 @@ def normalize_record(record, source):
 
     return {
         "period": period,
-        "date": date.replace("-", "/"),
+        "date": date,
         "numbers": sorted(numbers),
         "source": source,
         "raw": record,

@@ -144,15 +144,28 @@ export default function Home() {
   useEffect(() => {
     let isMounted = true;
 
+    const loadStaticHistory = () =>
+      fetch("/data/lotto539_daily_cash_history.json")
+        .then((response) => (response.ok ? response.json() : null))
+        .then((draws: Draw[] | null) => {
+          if (!isMounted || !draws?.length) return;
+          setHistory(draws);
+          setDataSource("5年爬蟲資料");
+        });
+
     fetch("/api/draws")
       .then((response) => response.json())
       .then((payload: { draws?: Draw[]; source?: string }) => {
         if (!isMounted || !payload.draws?.length) return;
+        if (payload.source !== "database") {
+          void loadStaticHistory();
+          return;
+        }
         setHistory(payload.draws);
-        setDataSource(payload.source === "database" ? "資料庫" : "示範資料");
+        setDataSource("資料庫");
       })
       .catch(() => {
-        if (isMounted) setDataSource("示範資料");
+        if (isMounted) void loadStaticHistory();
       });
 
     return () => {
