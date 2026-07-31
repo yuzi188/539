@@ -5,6 +5,7 @@ import { seedHistory, type Draw } from "./lib/lotto-data";
 
 type Mode = "balanced" | "hot" | "cold" | "value";
 type EditMode = "lock" | "exclude";
+type PlayType = "official5" | "star2" | "star3" | "star4";
 type YouTubeLive = {
   videoId: string;
   title: string;
@@ -25,6 +26,43 @@ const modes: { id: Mode; label: string; detail: string }[] = [
   { id: "hot", label: "熱號", detail: "近期高頻優先" },
   { id: "cold", label: "補冷", detail: "遺漏較久優先" },
   { id: "value", label: "和值", detail: "避開極端和值" },
+];
+
+const playRules: {
+  id: PlayType;
+  label: string;
+  size: number;
+  defaultPrize: number;
+  detail: string;
+}[] = [
+  {
+    id: "official5",
+    label: "官方 5 號",
+    size: 5,
+    defaultPrize: 50,
+    detail: "選滿 5 個號碼，依命中 2 到 5 顆做一般回測。",
+  },
+  {
+    id: "star2",
+    label: "二星",
+    size: 2,
+    defaultPrize: 5300,
+    detail: "選 2 個以上號碼，系統自動連碰成每組 2 碼。",
+  },
+  {
+    id: "star3",
+    label: "三星",
+    size: 3,
+    defaultPrize: 57000,
+    detail: "選 3 個以上號碼，系統自動連碰成每組 3 碼。",
+  },
+  {
+    id: "star4",
+    label: "四星",
+    size: 4,
+    defaultPrize: 750000,
+    detail: "選 4 個以上號碼，系統自動連碰成每組 4 碼。",
+  },
 ];
 
 const modeDescriptions: Record<Mode, string> = {
@@ -59,6 +97,34 @@ function sum(numbers: number[]) {
 
 function getHits(candidate: number[], draw: Draw) {
   return candidate.filter((number) => draw.numbers.includes(number)).length;
+}
+
+function buildCombinations(numbers: number[], size: number, cap = 3000) {
+  const normalized = normalizeCombo(numbers);
+  const results: number[][] = [];
+
+  function walk(start: number, combo: number[]) {
+    if (results.length >= cap) return;
+    if (combo.length === size) {
+      results.push(combo);
+      return;
+    }
+
+    for (let index = start; index < normalized.length; index += 1) {
+      walk(index + 1, [...combo, normalized[index]]);
+    }
+  }
+
+  walk(0, []);
+  return results;
+}
+
+function getOfficialPrize(hit: number) {
+  if (hit === 5) return 8000000;
+  if (hit === 4) return 20000;
+  if (hit === 3) return 300;
+  if (hit === 2) return 50;
+  return 0;
 }
 
 function buildStats(draws: Draw[]) {
@@ -175,6 +241,8 @@ export default function Home() {
   const [history, setHistory] = useState<Draw[]>(fallbackHistory);
   const [dataSource, setDataSource] = useState("示範資料");
   const [betAmount, setBetAmount] = useState(50);
+  const [playType, setPlayType] = useState<PlayType>("star2");
+  const [playPayout, setPlayPayout] = useState(5300);
   const [isLatestFiveOpen, setIsLatestFiveOpen] = useState(false);
   const [youtubeLive, setYoutubeLive] = useState<YouTubeLive | null>(null);
   const [youtubeStatus, setYoutubeStatus] = useState("正在抓取今日開獎直播");
@@ -185,6 +253,16 @@ export default function Home() {
   const [savingPrediction, setSavingPrediction] = useState(false);
   const [predictionMessage, setPredictionMessage] = useState("");
   const predictionRef = useRef<HTMLDivElement | null>(null);
+  const playRule = playRules.find((item) => item.id === playType) ?? playRules[1];
+  const maxSelectable = playType === "official5" ? 5 : 12;
+
+  useEffect(() => {
+    setLocked((items) => items.slice(0, maxSelectable));
+  }, [maxSelectable]);
+
+  useEffect(() => {
+    setPlayPayout(playRule.defaultPrize);
+  }, [playRule.defaultPrize]);
 
   useEffect(() => {
     setIsDarkMode(window.localStorage.getItem("lotto539-theme") === "dark");
@@ -267,15 +345,46 @@ export default function Home() {
     numbers: makeCombo(item.id, stats, locked, excluded, index),
   }));
   const currentMode = modes.find((item) => item.id === mode) ?? modes[0];
-  const backtestBase = locked.length === 5 ? normalizeCombo(locked) : predictions[0].numbers;
-  const backtest = history.map((draw) => getHits(backtestBase, draw));
-  const backtestWinCount = backtest.filter((hit) => hit >= 2).length;
-  const backtestLabel = locked.length === 5 ? "你鎖定的 5 個號碼" : "目前平衡主推組合";
-  const prizes = backtest.reduce(
-    (acc, hit) => acc + (hit === 5 ? 8000000 : hit === 4 ? 20000 : hit === 3 ? 300 : hit === 2 ? 50 : 0),
-    0,
-  );
-  const cost = history.length * betAmount;
+  const selectedNumbers = normalizeCombo(locked);
+  const officialBacktestBase =
+    selectedNumbers.length === 5 ? selectedNumbers : predictions[0].numbers;
+  const starTickets =
+    playType === "official5" ? [] : buildCombinations(selectedNumbers, playRule.size);
+  const ticketCount = playType === "official5" ? 1 : starTickets.length;
+  const backtestBase =
+    playType === "official5" ? officialBacktestBase : selectedNumbers;
+  const backtestReady = playType === "official5" || selectedNumbers.length >= playRule.size;
+  const backtest = backtestReady
+    ? history.map((draw) => {
+        if (playType === "official5") {
+          const hit = getHits(officialBacktestBase, draw);
+          return {
+            hit,
+            winTickets: hit >= 2 ? 1 : 0,
+            prize: getOfficialPrize(hit),
+          };
+        }
+
+        const winTickets = starTickets.filter((ticket) =>
+          ticket.every((number) => draw.numbers.includes(number)),
+        ).length;
+        return {
+          hit: getHits(selectedNumbers, draw),
+          winTickets,
+          prize: winTickets * playPayout * (betAmount / 10),
+        };
+      })
+    : [];
+  const backtestWinCount = backtest.filter((item) => item.winTickets > 0).length;
+  const backtestWinningTickets = backtest.reduce((acc, item) => acc + item.winTickets, 0);
+  const backtestLabel =
+    playType === "official5"
+      ? selectedNumbers.length === 5
+        ? "官方 5 號回測"
+        : "官方 5 號主推組合"
+      : `${playRule.label}連碰回測`;
+  const prizes = backtest.reduce((acc, item) => acc + item.prize, 0);
+  const cost = backtestReady ? history.length * ticketCount * betAmount : 0;
   const profit = prizes - cost;
 
   function toggleNumber(number: number) {
@@ -284,7 +393,7 @@ export default function Home() {
       setLocked((items) =>
         items.includes(number)
           ? items.filter((item) => item !== number)
-          : items.length < 5
+          : items.length < maxSelectable
             ? normalizeCombo([...items, number])
             : items,
       );
@@ -693,37 +802,61 @@ export default function Home() {
                 <span>{backtestLabel}</span>
               </div>
               <p className="backtest-intro">
-                把下方這組號碼套回近 {history.length.toLocaleString()} 期開獎，假設每期都下同一組，用來看歷史上中幾次、花多少、拿回多少。
+                這裡只做玩法模擬。官方 5 號用命中碼數回測；二星、三星、四星會把你選的號碼自動連碰拆組，再套回近 {history.length.toLocaleString()} 期。
               </p>
               <div className="backtest-help">
-                <strong>要自己選回測號碼？</strong>
-                <span>到右側「回測號碼選擇」，切到「鎖定」，點滿 5 顆，回測就會立刻改用你選的號碼。</span>
+                <strong>不用只選 5 個號碼</strong>
+                <span>
+                  例如二星選 6 個號碼，系統會自動拆成 {buildCombinations([1, 2, 3, 4, 5, 6], 2).length} 注二星組合；只要其中一注 2 碼都出現在當期開獎號，就列為命中。
+                </span>
                 <a href="#number-lab">去選號碼</a>
               </div>
+              <div className="backtest-settings">
+                <label className="inline-amount-control">
+                  每注金額
+                  <input
+                    min={0}
+                    step={10}
+                    type="number"
+                    value={betAmount}
+                    onChange={(event) =>
+                      setBetAmount(Math.max(0, Number(event.target.value) || 0))
+                    }
+                  />
+                </label>
+                {playType !== "official5" ? (
+                  <label className="inline-amount-control">
+                    每注模擬派彩
+                    <input
+                      min={0}
+                      step={100}
+                      type="number"
+                      value={playPayout}
+                      onChange={(event) =>
+                        setPlayPayout(Math.max(0, Number(event.target.value) || 0))
+                      }
+                    />
+                  </label>
+                ) : null}
+              </div>
               <div className="backtest-current">
-                <span>目前拿去回測的號碼</span>
+                <span>
+                  目前回測號碼 {playType !== "official5" ? `／自動拆 ${ticketCount} 注` : ""}
+                </span>
                 <div className="balls-row compact">
-                  {backtestBase.map((number) => (
-                    <span className="ball muted" key={number}>
-                      {pad(number)}
-                    </span>
-                  ))}
+                  {backtestBase.length ? (
+                    backtestBase.map((number) => (
+                      <span className="ball muted" key={number}>
+                        {pad(number)}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="play-warning">請至少選 {playRule.size} 個號碼</span>
+                  )}
                 </div>
               </div>
-              <label className="inline-amount-control">
-                每期投注金額
-                <input
-                  min={0}
-                  step={50}
-                  type="number"
-                  value={betAmount}
-                  onChange={(event) =>
-                    setBetAmount(Math.max(0, Number(event.target.value) || 0))
-                  }
-                />
-              </label>
               <p className="backtest-formula">
-                試算方式：{history.length.toLocaleString()} 期 × 每期 {betAmount.toLocaleString()} 元 = 假設投入 {cost.toLocaleString()} 元
+                試算方式：{history.length.toLocaleString()} 期 × {ticketCount.toLocaleString()} 注 × 每注 {betAmount.toLocaleString()} 元 = 假設投入 {cost.toLocaleString()} 元
               </p>
               <div className="backtest-grid">
                 <div>
@@ -735,8 +868,12 @@ export default function Home() {
                   <strong>{prizes.toLocaleString()} 元</strong>
                 </div>
                 <div>
-                  <span>中 2 碼以上</span>
+                  <span>命中期數</span>
                   <strong>{backtestWinCount} 期</strong>
+                </div>
+                <div>
+                  <span>命中注數</span>
+                  <strong>{backtestWinningTickets.toLocaleString()} 注</strong>
                 </div>
                 <div>
                   <span>試算損益</span>
@@ -747,13 +884,13 @@ export default function Home() {
                 </div>
               </div>
               <div className="hit-strip-title">
-                <span>最近 16 期命中碼數</span>
-                <strong>紅色代表中 2 碼以上</strong>
+                <span>最近 16 期回測</span>
+                <strong>{playType === "official5" ? "數字是命中碼數" : "數字是命中注數"}</strong>
               </div>
               <div className="hit-strip">
-                {backtest.slice(0, 16).map((hit, index) => (
-                  <span className={hit >= 2 ? "hit" : ""} key={`${hit}-${index}`}>
-                    {hit}
+                {backtest.slice(0, 16).map((item, index) => (
+                  <span className={item.winTickets > 0 ? "hit" : ""} key={`${item.hit}-${index}`}>
+                    {playType === "official5" ? item.hit : item.winTickets}
                   </span>
                 ))}
               </div>
@@ -764,22 +901,44 @@ export default function Home() {
         <aside id="number-lab" className="control-panel">
           <div className="section-title">
             <h2>回測號碼選擇</h2>
-            <span>{locked.length}/5 已鎖定</span>
+            <span>
+              {locked.length}/{maxSelectable} 已選
+            </span>
           </div>
           <p className="number-lab-hint">
-            選「鎖定」後點滿 5 顆，回測試算會使用你鎖定的號碼；未滿 5 顆時，先用平衡主推組合。
+            先選玩法，再點號碼。二星、三星、四星不用選滿 5 個，選多個號碼時會自動連碰拆注回測。
           </p>
+
+          <div className="play-type-panel">
+            <span>玩法</span>
+            <div className="segmented play-type">
+              {playRules.map((item) => (
+                <button
+                  className={playType === item.id ? "active" : ""}
+                  key={item.id}
+                  onClick={() => setPlayType(item.id)}
+                  title={item.detail}
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <p>{playRule.detail}</p>
+          </div>
 
           <div className="segmented full">
             <button
               className={editMode === "lock" ? "active" : ""}
               onClick={() => setEditMode("lock")}
+              type="button"
             >
-              鎖定
+              選號
             </button>
             <button
               className={editMode === "exclude" ? "active" : ""}
               onClick={() => setEditMode("exclude")}
+              type="button"
             >
               排除
             </button>
@@ -794,6 +953,7 @@ export default function Home() {
                   className={`${isLocked ? "locked" : ""} ${isExcluded ? "excluded" : ""}`}
                   key={number}
                   onClick={() => toggleNumber(number)}
+                  type="button"
                 >
                   {pad(number)}
                 </button>
@@ -803,8 +963,18 @@ export default function Home() {
 
           <div className="mini-summary">
             <div>
-              <span>已鎖定</span>
+              <span>已選號碼</span>
               <strong>{locked.length ? locked.map(pad).join(" ") : "無"}</strong>
+            </div>
+            <div>
+              <span>自動拆注</span>
+              <strong>
+                {playType === "official5"
+                  ? "1 注"
+                  : backtestReady
+                    ? `${ticketCount.toLocaleString()} 注`
+                    : `至少 ${playRule.size} 個號碼`}
+              </strong>
             </div>
             <div>
               <span>已排除</span>
@@ -815,14 +985,14 @@ export default function Home() {
           <div className="rules-box">
             <strong>操作規則</strong>
             <ol>
-              <li>先選模型，再調整鎖定或排除號碼。</li>
-              <li>綠色代表鎖定，斜線代表排除。</li>
-              <li>每次產生後都看回測，不只看單組號碼。</li>
+              <li>官方 5 號最多選 5 個號碼。</li>
+              <li>二星、三星、四星可選多個號碼，系統自動連碰。</li>
+              <li>綠色代表已選，斜線代表排除。</li>
             </ol>
           </div>
 
           <p className="risk-note">
-            僅供數據參考。今彩539為隨機遊戲，請量力投注。
+            本站只做資料分析、玩法說明與回測模擬，不提供收注、代簽、付款或任何實際投注服務。
           </p>
         </aside>
       </section>

@@ -875,7 +875,7 @@ a {
 }
 
 .backtest-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-top: 14px;
 }
 
@@ -930,8 +930,43 @@ a {
   text-decoration: none;
 }
 
+.backtest-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .number-lab-hint {
   margin: 10px 0 0;
+}
+
+.play-type-panel {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 12px;
+  border: 1px solid rgba(12, 128, 100, 0.16);
+  border-radius: 8px;
+  background: rgba(12, 128, 100, 0.07);
+  padding: 12px;
+}
+
+.play-type-panel > span {
+  color: #0a6f58;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.play-type-panel p {
+  margin: 0;
+  color: #5d564b;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.segmented.play-type {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .backtest-current > span,
@@ -952,10 +987,10 @@ a {
 
 .inline-amount-control {
   display: grid;
-  grid-template-columns: 1fr 150px;
+  grid-template-columns: 1fr 130px;
   align-items: center;
   gap: 10px;
-  margin: 14px 0;
+  margin: 0;
   color: #4b463d;
   font-size: 13px;
   font-weight: 900;
@@ -970,6 +1005,18 @@ a {
   color: #22201c;
   padding: 0 10px;
   font: inherit;
+}
+
+.play-warning {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  border-radius: 8px;
+  background: #fff1d7;
+  color: #8a5208;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .hit-strip {
@@ -1601,7 +1648,8 @@ a {
 .dark-mode .logic-grid article,
 .dark-mode .guide-grid article,
 .dark-mode .rules-box,
-.dark-mode .backtest-help {
+.dark-mode .backtest-help,
+.dark-mode .play-type-panel {
   border-color: rgba(116, 225, 189, 0.18);
   background: rgba(22, 45, 36, 0.72);
 }
@@ -1610,6 +1658,7 @@ a {
 .dark-mode .guide-grid strong,
 .dark-mode .rules-box strong,
 .dark-mode .backtest-help strong,
+.dark-mode .play-type-panel > span,
 .dark-mode .youtube-live-copy strong,
 .dark-mode .youtube-live-meta a,
 .dark-mode .workflow-strip span,
@@ -1641,6 +1690,15 @@ a {
   border-color: rgba(232, 226, 214, 0.14);
   background: #121813;
   color: #f4f1e8;
+}
+
+.dark-mode .play-type-panel p {
+  color: #c9c1b4;
+}
+
+.dark-mode .play-warning {
+  background: #3a2b17;
+  color: #f3cf8d;
 }
 
 .dark-mode .number-grid button.locked {
@@ -1781,6 +1839,7 @@ a {
 
   .latest-grid,
   .backtest-grid,
+  .backtest-settings,
   .rank-columns {
     grid-template-columns: 1fr;
   }
