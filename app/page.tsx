@@ -176,7 +176,7 @@ export default function Home() {
 
   const stats = useMemo(() => buildStats(history), [history]);
   const latest = history[0] ?? fallbackHistory[0];
-  const previous = history[1] ?? latest;
+  const latestFive = history.slice(0, 5);
   const hot = [...stats].sort((a, b) => b.frequency - a.frequency).slice(0, 8);
   const cold = [...stats].sort((a, b) => b.missing - a.missing).slice(0, 8);
   const predictions = modes.map((item, index) => ({
@@ -241,6 +241,9 @@ export default function Home() {
               <a className="secondary-button" href="#lab">
                 進入分析台
               </a>
+              <a className="secondary-button" href="/history">
+                歷史開獎
+              </a>
               <a className="secondary-button" href="/member">
                 會員中心
               </a>
@@ -260,19 +263,27 @@ export default function Home() {
                 </span>
               ))}
             </div>
-            <div className="latest-grid">
-              <div>
-                <span>前一期和值</span>
-                <strong>{sum(previous.numbers)}</strong>
+            <div className="latest-draw-list" aria-label="近5期開獎紀錄">
+              <div className="latest-list-title">
+                <span>近 5 期紀錄</span>
+                <a href="/history">全部歷史</a>
               </div>
-              <div>
-                <span>本期和值</span>
-                <strong>{sum(latest.numbers)}</strong>
-              </div>
-              <div>
-                <span>近期資料</span>
-                <strong>{history.length} 期</strong>
-              </div>
+              {latestFive.map((draw) => (
+                <article className="latest-draw-row" key={draw.period}>
+                  <div>
+                    <strong>第 {draw.period} 期</strong>
+                    <span>{draw.date}</span>
+                  </div>
+                  <div className="balls-row mini">
+                    {draw.numbers.map((number) => (
+                      <span className="ball tiny" key={`${draw.period}-${number}`}>
+                        {pad(number)}
+                      </span>
+                    ))}
+                  </div>
+                  <b>{sum(draw.numbers)}</b>
+                </article>
+              ))}
             </div>
           </div>
         </div>
@@ -288,6 +299,9 @@ export default function Home() {
               </div>
               <a className="secondary-button" href="#lab">
                 開始操作
+              </a>
+              <a className="secondary-button" href="/history">
+                查看歷史開獎
               </a>
             </div>
             <div className="guide-grid">

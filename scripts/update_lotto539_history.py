@@ -1,6 +1,7 @@
 import argparse
 import csv
 import json
+import os
 import time
 import urllib.error
 from datetime import datetime
@@ -125,7 +126,16 @@ def main():
     parser.add_argument("--month", action="append", help="Month to refresh, for example 2026-07. Can be repeated.")
     parser.add_argument("--today-only", action="store_true", help="Only keep today's draw from the fetched month.")
     parser.add_argument("--date", help="Target date for --today-only, for example 2026-07-31. Defaults to today.")
-    parser.add_argument("--site", help="Optional public site URL. When present, posts fetched rows to /api/draws.")
+    parser.add_argument(
+        "--site",
+        default=os.getenv("LOTTO539_SITE_URL"),
+        help="Optional public site URL. When present, posts fetched rows to /api/draws.",
+    )
+    parser.add_argument(
+        "--token",
+        default=os.getenv("LOTTO539_DRAW_SYNC_TOKEN") or os.getenv("DRAW_SYNC_TOKEN"),
+        help="Optional sync token for protected /api/draws writes.",
+    )
     args = parser.parse_args()
 
     months = month_list(args.month)
@@ -144,7 +154,7 @@ def main():
     posted = None
     if args.site and incoming:
         try:
-            posted = post_draws(args.site, incoming)
+            posted = post_draws(args.site, incoming, args.token)
         except urllib.error.HTTPError as exc:
             posted = {"error": exc.read().decode("utf-8", errors="replace")}
 

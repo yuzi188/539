@@ -1,9 +1,31 @@
 import { desc, eq, and } from "drizzle-orm";
+import { env } from "cloudflare:workers";
 import { draws } from "../../../db/schema";
 import { getDb } from "../../../db";
 import { normalizeDraws, seedHistory, type Draw } from "../../lib/lotto-data";
 
 type IncomingRecord = Record<string, unknown>;
+
+function getSyncToken() {
+  return (
+    (env as Record<string, unknown>).DRAW_SYNC_TOKEN ??
+    (env as Record<string, unknown>).LOTTO539_DRAW_SYNC_TOKEN ??
+    process.env.DRAW_SYNC_TOKEN ??
+    process.env.LOTTO539_DRAW_SYNC_TOKEN ??
+    ""
+  );
+}
+
+function isAuthorized(request: Request) {
+  const expected = String(getSyncToken()).trim();
+  if (!expected) return true;
+
+  const auth = request.headers.get("authorization") ?? "";
+  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const headerToken = request.headers.get("x-draw-sync-token")?.trim() ?? "";
+
+  return bearer === expected || headerToken === expected;
+}
 
 function toRouteErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message : "Unexpected error";
@@ -148,6 +170,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    if (!isAuthorized(request)) {
+      return Response.json(
+        { error: "沒有授權更新開獎資料。" },
+        { status: 401 },
+      );
+    }
+
     const payload = (await request.json()) as
       | IncomingRecord
       | { draws?: IncomingRecord[]; data?: IncomingRecord[]; source?: string };

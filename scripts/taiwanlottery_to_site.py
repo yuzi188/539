@@ -71,15 +71,18 @@ def fetch_daily_cash(year_month):
     return crawler.daily_cash()
 
 
-def post_draws(endpoint, draws):
+def post_draws(endpoint, draws, token=None):
     body = json.dumps(
         {"source": "TaiwanLotteryCrawler", "draws": draws},
         ensure_ascii=False,
     ).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(
         endpoint.rstrip("/") + "/api/draws",
         data=body,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
 
@@ -95,6 +98,11 @@ def main():
         "--site",
         default=os.getenv("LOTTO539_SITE_URL", "http://localhost:3002"),
         help="Site base URL, for example https://your-site.chatgpt.site",
+    )
+    parser.add_argument(
+        "--token",
+        default=os.getenv("LOTTO539_DRAW_SYNC_TOKEN") or os.getenv("DRAW_SYNC_TOKEN"),
+        help="Optional sync token for protected /api/draws writes.",
     )
     parser.add_argument(
         "--month",
@@ -116,7 +124,7 @@ def main():
         return
 
     try:
-        result = post_draws(args.site, draws)
+        result = post_draws(args.site, draws, args.token)
     except urllib.error.HTTPError as exc:
         sys.stderr.write(exc.read().decode("utf-8", errors="replace") + "\n")
         raise
