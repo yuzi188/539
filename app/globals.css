@@ -1012,7 +1012,8 @@ a {
   font-weight: 900;
 }
 
-.inline-amount-control input {
+.inline-amount-control input,
+.inline-amount-control select {
   min-height: 40px;
   min-width: 0;
   border: 1px solid rgba(55, 45, 30, 0.16);
@@ -1729,6 +1730,7 @@ a {
 
 .dark-mode .number-grid button,
 .dark-mode .inline-amount-control input,
+.dark-mode .inline-amount-control select,
 .dark-mode .member-card input,
 .dark-mode .member-card select,
 .dark-mode .history-filters input,

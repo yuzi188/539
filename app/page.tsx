@@ -20,6 +20,7 @@ type YouTubeLive = {
 const fallbackHistory = seedHistory;
 
 const allNumbers = Array.from({ length: 39 }, (_, index) => index + 1);
+const backtestPeriodOptions = [50, 100, 200, 500];
 
 const modes: { id: Mode; label: string; detail: string }[] = [
   { id: "balanced", label: "平衡", detail: "冷熱、奇偶、大小混合" },
@@ -241,6 +242,7 @@ export default function Home() {
   const [history, setHistory] = useState<Draw[]>(fallbackHistory);
   const [dataSource, setDataSource] = useState("示範資料");
   const [betAmount, setBetAmount] = useState(50);
+  const [backtestPeriodLimit, setBacktestPeriodLimit] = useState(100);
   const [playType, setPlayType] = useState<PlayType>("star2");
   const [playPayout, setPlayPayout] = useState(5300);
   const [isLatestFiveOpen, setIsLatestFiveOpen] = useState(false);
@@ -356,8 +358,9 @@ export default function Home() {
   const backtestBase =
     playType === "official5" ? officialBacktestBase : selectedNumbers;
   const backtestReady = playType === "official5" || selectedNumbers.length >= playRule.size;
+  const backtestHistory = history.slice(0, Math.min(backtestPeriodLimit, history.length));
   const backtest = backtestReady
-    ? history.map((draw) => {
+    ? backtestHistory.map((draw) => {
         if (playType === "official5") {
           const hit = getHits(officialBacktestBase, draw);
           return {
@@ -386,7 +389,7 @@ export default function Home() {
         : "官方 5 號主推組合"
       : `${playRule.label}連碰回測`;
   const prizes = backtest.reduce((acc, item) => acc + item.prize, 0);
-  const cost = backtestReady ? history.length * ticketCount * betAmount : 0;
+  const cost = backtestReady ? backtestHistory.length * ticketCount * betAmount : 0;
   const profit = prizes - cost;
 
   function toggleNumber(number: number) {
@@ -423,7 +426,7 @@ export default function Home() {
     }
 
     setCalculationMessage(
-      `${playRule.label}已完成試算：自動拆 ${ticketCount.toLocaleString()} 注，近 ${history.length.toLocaleString()} 期命中 ${backtestWinCount.toLocaleString()} 期。`,
+      `${playRule.label}已完成試算：自動拆 ${ticketCount.toLocaleString()} 注，近 ${backtestHistory.length.toLocaleString()} 期命中 ${backtestWinCount.toLocaleString()} 期。`,
     );
     window.setTimeout(() => {
       backtestRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -827,7 +830,7 @@ export default function Home() {
                 <div className="calculation-message">{calculationMessage}</div>
               ) : null}
               <p className="backtest-intro">
-                這裡只做玩法模擬。官方 5 號用命中碼數回測；二星、三星、四星會把你選的號碼自動連碰拆組，再套回近 {history.length.toLocaleString()} 期。
+                這裡只做玩法模擬。官方 5 號用命中碼數回測；二星、三星、四星會把你選的號碼自動連碰拆組，再套回近 {backtestHistory.length.toLocaleString()} 期。
               </p>
               <div className="backtest-help">
                 <strong>不用只選 5 個號碼</strong>
@@ -837,6 +840,19 @@ export default function Home() {
                 <a href="#number-lab">去選號碼</a>
               </div>
               <div className="backtest-settings">
+                <label className="inline-amount-control">
+                  回測期數
+                  <select
+                    value={backtestPeriodLimit}
+                    onChange={(event) => setBacktestPeriodLimit(Number(event.target.value))}
+                  >
+                    {backtestPeriodOptions.map((option) => (
+                      <option key={option} value={option}>
+                        最近 {option} 期
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className="inline-amount-control">
                   每注金額
                   <input
@@ -881,7 +897,7 @@ export default function Home() {
                 </div>
               </div>
               <p className="backtest-formula">
-                試算方式：{history.length.toLocaleString()} 期 × {ticketCount.toLocaleString()} 注 × 每注 {betAmount.toLocaleString()} 元 = 假設投入 {cost.toLocaleString()} 元
+                試算方式：{backtestHistory.length.toLocaleString()} 期 × {ticketCount.toLocaleString()} 注 × 每注 {betAmount.toLocaleString()} 元 = 假設投入 {cost.toLocaleString()} 元
               </p>
               <div className="backtest-grid">
                 <div>
