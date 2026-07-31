@@ -1,4 +1,5 @@
 import { normalizeDraws, seedHistory, type Draw } from "./lotto-data";
+import bundledHistoryJson from "../../public/data/lotto539_daily_cash_history.json";
 
 type RuntimeEnv = Record<string, unknown>;
 
@@ -96,6 +97,16 @@ let d1Checked = false;
 let d1Database: D1DatabaseLike | null = null;
 let setupPromise: Promise<void> | null = null;
 let fileWriteQueue = Promise.resolve();
+const bundledHistory = normalizeDraws(
+  ((bundledHistoryJson as Draw[]).length ? (bundledHistoryJson as Draw[]) : seedHistory).map(
+    (draw) => ({
+      period: String(draw.period),
+      date: String(draw.date),
+      numbers: Array.isArray(draw.numbers) ? draw.numbers.map(Number) : [],
+      source: draw.source ?? "TaiwanLotteryCrawler",
+    }),
+  ),
+);
 
 const setupStatements = [
   `CREATE TABLE IF NOT EXISTS draws (
@@ -191,7 +202,7 @@ function drawToRecord(draw: Draw, index: number): DrawRecord {
 }
 
 function emptyStore(): StoreData {
-  const draws = seedHistory.map(drawToRecord);
+  const draws = bundledHistory.map(drawToRecord);
   return {
     counters: {
       draws: draws.length,
@@ -206,6 +217,37 @@ function emptyStore(): StoreData {
     orders: [],
     predictions: [],
   };
+}
+
+function hydrateBundledHistory(store: StoreData) {
+  const timestamp = nowIso();
+  const existing = new Set(store.draws.map((draw) => `${draw.game}:${draw.period}`));
+
+  for (const draw of bundledHistory) {
+    const key = `daily_cash:${draw.period}`;
+    if (existing.has(key)) continue;
+
+    const [n1, n2, n3, n4, n5] = draw.numbers;
+    store.counters.draws += 1;
+    store.draws.push({
+      id: store.counters.draws,
+      game: "daily_cash",
+      period: draw.period,
+      drawDate: draw.date,
+      n1,
+      n2,
+      n3,
+      n4,
+      n5,
+      source: draw.source ?? "TaiwanLotteryCrawler",
+      rawJson: JSON.stringify(draw),
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+
+  store.counters.draws = Math.max(store.counters.draws, store.draws.length);
+  return store;
 }
 
 function mapDraw(row: DrawRecord): Draw {
@@ -318,14 +360,14 @@ async function readFileStore(): Promise<StoreData> {
     const parsed = JSON.parse(raw) as Partial<StoreData>;
     const fallback = emptyStore();
 
-    return {
+    return hydrateBundledHistory({
       counters: { ...fallback.counters, ...parsed.counters },
       draws: parsed.draws?.length ? parsed.draws : fallback.draws,
       members: parsed.members ?? [],
       sessions: parsed.sessions ?? [],
       orders: parsed.orders ?? [],
       predictions: parsed.predictions ?? [],
-    };
+    });
   } catch {
     return emptyStore();
   }
@@ -360,6 +402,34 @@ async function all<T>(db: D1DatabaseLike, query: string, values: unknown[] = [])
   return result.results ?? [];
 }
 
+async function seedD1BundledHistory(db: D1DatabaseLike) {
+  const updatedAt = nowIso();
+
+  for (const draw of bundledHistory) {
+    const [n1, n2, n3, n4, n5] = draw.numbers;
+    await db
+      .prepare(
+        `INSERT INTO draws (game, period, draw_date, n1, n2, n3, n4, n5, source, raw_json, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(game, period) DO NOTHING`,
+      )
+      .bind(
+        "daily_cash",
+        draw.period,
+        draw.date,
+        n1,
+        n2,
+        n3,
+        n4,
+        n5,
+        draw.source ?? "TaiwanLotteryCrawler",
+        JSON.stringify(draw),
+        updatedAt,
+      )
+      .run();
+  }
+}
+
 export async function ensureStore() {
   if (setupPromise) return setupPromise;
 
@@ -367,6 +437,13 @@ export async function ensureStore() {
     const db = await getD1();
     if (db) {
       await db.batch(setupStatements.map((statement) => db.prepare(statement)));
+      const row = await db
+        .prepare("SELECT COUNT(*) AS count FROM draws WHERE game = ?")
+        .bind("daily_cash")
+        .first<{ count: number }>();
+      if (Number(row?.count ?? 0) < bundledHistory.length) {
+        await seedD1BundledHistory(db);
+      }
       return;
     }
 
