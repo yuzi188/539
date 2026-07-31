@@ -128,7 +128,7 @@ export async function GET() {
       .from(draws)
       .where(eq(draws.game, "daily_cash"))
       .orderBy(desc(draws.drawDate), desc(draws.period))
-      .limit(300);
+      .limit(2000);
     const data = rows.map(mapRow);
 
     return Response.json({
