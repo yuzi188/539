@@ -555,8 +555,38 @@ a {
 }
 
 .backtest-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-top: 14px;
+}
+
+.backtest-intro,
+.backtest-formula {
+  margin: 12px 0 0;
+  color: #5d564b;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.backtest-current {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.backtest-current > span,
+.hit-strip-title span,
+.hit-strip-title strong {
+  color: #70695e;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.profit-positive {
+  color: #0a6f58;
+}
+
+.profit-negative {
+  color: #ba2737;
 }
 
 .inline-amount-control {
@@ -598,6 +628,15 @@ a {
   color: #6b6358;
   font-size: 12px;
   font-weight: 900;
+}
+
+.hit-strip-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 .hit-strip span.hit {

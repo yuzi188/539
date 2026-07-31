@@ -186,11 +186,14 @@ export default function Home() {
   }));
   const backtestBase = locked.length === 5 ? normalizeCombo(locked) : predictions[0].numbers;
   const backtest = history.map((draw) => getHits(backtestBase, draw));
+  const backtestWinCount = backtest.filter((hit) => hit >= 2).length;
+  const backtestLabel = locked.length === 5 ? "你鎖定的 5 個號碼" : "目前平衡主推組合";
   const prizes = backtest.reduce(
     (acc, hit) => acc + (hit === 5 ? 8000000 : hit === 4 ? 20000 : hit === 3 ? 300 : hit === 2 ? 50 : 0),
     0,
   );
   const cost = history.length * betAmount;
+  const profit = prizes - cost;
 
   function toggleNumber(number: number) {
     if (editMode === "lock") {
@@ -428,8 +431,21 @@ export default function Home() {
 
             <section className="data-panel">
               <div className="section-title">
-                <h2>回測</h2>
-                <span>{locked.length === 5 ? "鎖定號碼" : "平衡主推"}</span>
+                <h2>回測試算</h2>
+                <span>{backtestLabel}</span>
+              </div>
+              <p className="backtest-intro">
+                把下方這組號碼套回近 {history.length.toLocaleString()} 期開獎，假設每期都下同一組，用來看歷史上中幾次、花多少、拿回多少。
+              </p>
+              <div className="backtest-current">
+                <span>目前拿去回測的號碼</span>
+                <div className="balls-row compact">
+                  {backtestBase.map((number) => (
+                    <span className="ball muted" key={number}>
+                      {pad(number)}
+                    </span>
+                  ))}
+                </div>
               </div>
               <label className="inline-amount-control">
                 每期投注金額
@@ -443,26 +459,33 @@ export default function Home() {
                   }
                 />
               </label>
-              <div className="balls-row compact">
-                {backtestBase.map((number) => (
-                  <span className="ball muted" key={number}>
-                    {pad(number)}
-                  </span>
-                ))}
-              </div>
+              <p className="backtest-formula">
+                試算方式：{history.length.toLocaleString()} 期 × 每期 {betAmount.toLocaleString()} 元 = 假設投入 {cost.toLocaleString()} 元
+              </p>
               <div className="backtest-grid">
                 <div>
-                  <span>投入</span>
+                  <span>假設投入</span>
                   <strong>{cost.toLocaleString()} 元</strong>
                 </div>
                 <div>
-                  <span>派彩</span>
+                  <span>歷史派彩</span>
                   <strong>{prizes.toLocaleString()} 元</strong>
                 </div>
                 <div>
-                  <span>中二以上</span>
-                  <strong>{backtest.filter((hit) => hit >= 2).length} 期</strong>
+                  <span>中 2 碼以上</span>
+                  <strong>{backtestWinCount} 期</strong>
                 </div>
+                <div>
+                  <span>試算損益</span>
+                  <strong className={profit >= 0 ? "profit-positive" : "profit-negative"}>
+                    {profit >= 0 ? "+" : ""}
+                    {profit.toLocaleString()} 元
+                  </strong>
+                </div>
+              </div>
+              <div className="hit-strip-title">
+                <span>最近 16 期命中碼數</span>
+                <strong>紅色代表中 2 碼以上</strong>
               </div>
               <div className="hit-strip">
                 {backtest.slice(0, 16).map((hit, index) => (
