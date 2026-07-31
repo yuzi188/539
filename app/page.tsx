@@ -274,6 +274,47 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="guide-band" aria-labelledby="guide-title">
+        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+          <div className="guide-panel">
+            <div className="guide-heading">
+              <div>
+                <span>第一次使用</span>
+                <h2 id="guide-title">照這 4 步看懂本期參考</h2>
+              </div>
+              <a className="secondary-button" href="#lab">
+                開始操作
+              </a>
+            </div>
+            <div className="guide-grid">
+              <article>
+                <strong>1</strong>
+                <h3>先看資料來源</h3>
+                <p>左上角顯示「資料庫」或「5年爬蟲資料」時，代表分析已使用歷史開獎資料。</p>
+              </article>
+              <article>
+                <strong>2</strong>
+                <h3>選擇分析模型</h3>
+                <p>平衡適合一般參考；熱號看近期高頻；補冷看遺漏較久；和值避開極端組合。</p>
+              </article>
+              <article>
+                <strong>3</strong>
+                <h3>鎖定或排除號碼</h3>
+                <p>右側先切換「鎖定」或「排除」，再點 01-39。最多鎖定 5 個號碼。</p>
+              </article>
+              <article>
+                <strong>4</strong>
+                <h3>產生後看回測</h3>
+                <p>按「重新產生」取得組合，再看近 5 年命中 2 碼以上的次數與模擬成本。</p>
+              </article>
+            </div>
+            <p className="guide-note">
+              使用規則：本頁只做數據分析與號碼參考，不保證中獎；建議每期先看資料來源，再用固定模型產生組合，避免憑感覺加碼。
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section id="lab" className="mx-auto grid max-w-7xl gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
         <div className="space-y-4">
           <div className="toolbar">
@@ -442,6 +483,15 @@ export default function Home() {
               <span>已排除</span>
               <strong>{excluded.length ? excluded.map(pad).join(" ") : "無"}</strong>
             </div>
+          </div>
+
+          <div className="rules-box">
+            <strong>操作規則</strong>
+            <ol>
+              <li>先選模型，再調整鎖定或排除號碼。</li>
+              <li>綠色代表鎖定，斜線代表排除。</li>
+              <li>每次產生後都看回測，不只看單組號碼。</li>
+            </ol>
           </div>
 
           <p className="risk-note">
