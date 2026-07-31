@@ -573,6 +573,47 @@ a {
   margin-top: 14px;
 }
 
+.backtest-help {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  border: 1px solid rgba(12, 128, 100, 0.16);
+  border-radius: 8px;
+  background: rgba(12, 128, 100, 0.07);
+  padding: 12px;
+}
+
+.backtest-help strong {
+  color: #0a6f58;
+  font-size: 14px;
+}
+
+.backtest-help span,
+.number-lab-hint {
+  color: #5d564b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.backtest-help a {
+  display: inline-flex;
+  min-height: 38px;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #0c8064;
+  color: #fff;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.number-lab-hint {
+  margin: 10px 0 0;
+}
+
 .backtest-current > span,
 .hit-strip-title span,
 .hit-strip-title strong {

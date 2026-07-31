@@ -437,6 +437,11 @@ export default function Home() {
               <p className="backtest-intro">
                 把下方這組號碼套回近 {history.length.toLocaleString()} 期開獎，假設每期都下同一組，用來看歷史上中幾次、花多少、拿回多少。
               </p>
+              <div className="backtest-help">
+                <strong>要自己選回測號碼？</strong>
+                <span>到右側「回測號碼選擇」，切到「鎖定」，點滿 5 顆，回測就會立刻改用你選的號碼。</span>
+                <a href="#number-lab">去選號碼</a>
+              </div>
               <div className="backtest-current">
                 <span>目前拿去回測的號碼</span>
                 <div className="balls-row compact">
@@ -498,11 +503,14 @@ export default function Home() {
           </div>
         </div>
 
-        <aside className="control-panel">
+        <aside id="number-lab" className="control-panel">
           <div className="section-title">
-            <h2>號碼實驗室</h2>
-            <span>{locked.length}/5 鎖定</span>
+            <h2>回測號碼選擇</h2>
+            <span>{locked.length}/5 已鎖定</span>
           </div>
+          <p className="number-lab-hint">
+            選「鎖定」後點滿 5 顆，回測試算會使用你鎖定的號碼；未滿 5 顆時，先用平衡主推組合。
+          </p>
 
           <div className="segmented full">
             <button
