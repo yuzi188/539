@@ -12,15 +12,24 @@ The repository includes `railway.toml`:
 
 Railway can deploy from a GitHub repository. After the repo is connected, new commits to the selected branch trigger a new build and deployment.
 
-## Important database note
+## Data storage
 
-The current app was originally built for Cloudflare D1. Member tables are protected with automatic table creation when D1 is available.
+The app uses Cloudflare D1 when a `DB` binding exists. On Railway it falls back
+to a JSON data file, so member accounts, saved predictions, orders, and daily
+draw imports can still be stored.
 
-For a long-term Railway production deployment, choose one:
+For durable Railway storage, attach a Railway Volume and set one of these:
 
-1. Keep Cloudflare Sites/D1 as the production hosting path.
-2. Add a Railway database adapter and migrate the member/draw storage to Railway Postgres.
-3. Run the app with a compatible D1/Worker runtime and accept that local file-backed state is not the same as a managed production database.
+- `RAILWAY_VOLUME_MOUNT_PATH`: Railway sets this when a volume is mounted.
+- `LOTTO539_DATA_PATH`: optional full file path, such as
+  `/data/lotto539-store.json`.
+
+Useful optional variables:
+
+- `DRAW_SYNC_TOKEN`: protects `/api/draws` when posting crawler updates.
+- `YOUTUBE_LIVE_SOURCE_URL`: defaults to
+  `https://www.youtube.com/@48ilottery48/streams`.
+- `YOUTUBE_LIVE_VIDEO_ID`: manual fallback video id for the live player.
 
 ## Required deployment flow
 

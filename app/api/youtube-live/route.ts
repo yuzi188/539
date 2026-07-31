@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { getConfigValue as getRuntimeConfigValue } from "../../lib/server-store";
 
 const DEFAULT_CHANNEL_ID = "UCX9q-HI41sFuh1Gs5X_ZZCw";
 const DEFAULT_SOURCE_URL = "https://www.youtube.com/@48ilottery48/streams";
@@ -23,17 +23,6 @@ type VideoCandidate = {
   metadata?: string;
   dateCode?: string;
 };
-
-function getConfigValue(...keys: string[]) {
-  const workerEnv = env as Record<string, unknown>;
-
-  for (const key of keys) {
-    const value = workerEnv[key] ?? process.env[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-
-  return "";
-}
 
 function decodeText(value: string) {
   return value
@@ -227,7 +216,10 @@ function pickByDrawTime(videos: VideoCandidate[]) {
 
 export async function GET() {
   try {
-    const fallbackVideoId = getConfigValue("YOUTUBE_LIVE_VIDEO_ID", "LOTTERY_LIVE_VIDEO_ID");
+    const fallbackVideoId = await getRuntimeConfigValue(
+      "YOUTUBE_LIVE_VIDEO_ID",
+      "LOTTERY_LIVE_VIDEO_ID",
+    );
     if (fallbackVideoId) {
       const target = getDrawTarget();
       return Response.json(
@@ -245,7 +237,8 @@ export async function GET() {
       );
     }
 
-    const sourceUrl = getConfigValue("YOUTUBE_LIVE_SOURCE_URL") || DEFAULT_SOURCE_URL;
+    const sourceUrl =
+      (await getRuntimeConfigValue("YOUTUBE_LIVE_SOURCE_URL")) || DEFAULT_SOURCE_URL;
     const pageResponse = await fetch(sourceUrl, {
       headers: {
         Accept: "text/html",
@@ -264,7 +257,7 @@ export async function GET() {
     }
 
     const channelId = await resolveChannelId(
-      getConfigValue("YOUTUBE_LIVE_CHANNEL_ID") || DEFAULT_CHANNEL_ID,
+      (await getRuntimeConfigValue("YOUTUBE_LIVE_CHANNEL_ID")) || DEFAULT_CHANNEL_ID,
     );
     const feedResponse = await fetch(
       `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`,

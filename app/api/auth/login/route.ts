@@ -1,13 +1,20 @@
-import { eq } from "drizzle-orm";
-import { getDb } from "../../../../db";
-import { members } from "../../../../db/schema";
 import {
   createSession,
   normalizeEmail,
   sessionCookie,
   verifyPassword,
 } from "../../../lib/member-auth";
-import { ensureMemberTables, toMemberErrorMessage } from "../../../lib/member-db";
+import { toMemberErrorMessage } from "../../../lib/member-db";
+import { findMemberByEmail } from "../../../lib/server-store";
+
+function memberPayload(member: Awaited<ReturnType<typeof findMemberByEmail>>) {
+  if (!member) return null;
+  return {
+    id: member.id,
+    email: member.email,
+    displayName: member.displayName,
+  };
+}
 
 export async function POST(request: Request) {
   try {
@@ -17,13 +24,7 @@ export async function POST(request: Request) {
     };
     const email = normalizeEmail(payload.email ?? "");
     const password = String(payload.password ?? "");
-    await ensureMemberTables();
-    const db = getDb();
-    const [member] = await db
-      .select()
-      .from(members)
-      .where(eq(members.email, email))
-      .limit(1);
+    const member = await findMemberByEmail(email);
 
     if (!member) {
       return Response.json({ error: "Email 或密碼不正確。" }, { status: 401 });
@@ -41,13 +42,7 @@ export async function POST(request: Request) {
     const session = await createSession(member.id);
 
     return Response.json(
-      {
-        member: {
-          id: member.id,
-          email: member.email,
-          displayName: member.displayName,
-        },
-      },
+      { member: memberPayload(member) },
       {
         headers: { "Set-Cookie": sessionCookie(session.token, session.expiresAt) },
       },

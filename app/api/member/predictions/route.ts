@@ -1,8 +1,12 @@
-import { and, desc, eq } from "drizzle-orm";
-import { getDb } from "../../../../db";
-import { draws, memberPredictions } from "../../../../db/schema";
 import { getCurrentMember } from "../../../lib/member-auth";
-import { ensureMemberTables, toMemberErrorMessage } from "../../../lib/member-db";
+import { toMemberErrorMessage } from "../../../lib/member-db";
+import {
+  createPrediction,
+  listDraws,
+  listPredictions,
+  type PredictionRecord,
+} from "../../../lib/server-store";
+import type { Draw } from "../../../lib/lotto-data";
 
 type IncomingPrediction = {
   period?: string;
@@ -50,8 +54,8 @@ function validatePrediction(payload: IncomingPrediction) {
   const excluded = normalizeNumbers(payload.excluded).slice(0, 39);
   const note = String(payload.note ?? "").trim().slice(0, 160);
 
-  if (!period) throw new Error("請提供預測期別。");
-  if (!sets.length) throw new Error("請先產生至少一組預測號碼。");
+  if (!period) throw new Error("請先產生本期參考期數。");
+  if (!sets.length) throw new Error("請至少保留一組預測號碼。");
 
   return { period, drawDate, model, sets, locked, excluded, note };
 }
@@ -64,19 +68,12 @@ function parseJson<T>(value: string, fallback: T): T {
   }
 }
 
-function drawKey(row: typeof draws.$inferSelect) {
-  return `${row.game}:${row.period}`;
-}
-
-function mapPrediction(
-  row: typeof memberPredictions.$inferSelect,
-  drawMap: Map<string, typeof draws.$inferSelect>,
-) {
+function mapPrediction(row: PredictionRecord, drawMap: Map<string, Draw>) {
   const sets = parseJson<number[][]>(row.setsJson, []);
   const locked = parseJson<number[]>(row.lockedJson, []);
   const excluded = parseJson<number[]>(row.excludedJson, []);
-  const draw = drawMap.get(`daily_cash:${row.period}`);
-  const drawNumbers = draw ? [draw.n1, draw.n2, draw.n3, draw.n4, draw.n5] : null;
+  const draw = drawMap.get(row.period);
+  const drawNumbers = draw ? draw.numbers : null;
   const results = sets.map((numbers) => {
     const hitCount = drawNumbers
       ? numbers.filter((number) => drawNumbers.includes(number)).length
@@ -112,19 +109,8 @@ function mapPrediction(
 }
 
 async function loadDrawMap() {
-  let rows: (typeof draws.$inferSelect)[] = [];
-  try {
-    rows = await getDb()
-      .select()
-      .from(draws)
-      .where(eq(draws.game, "daily_cash"))
-      .orderBy(desc(draws.drawDate), desc(draws.period))
-      .limit(2000);
-  } catch {
-    rows = [];
-  }
-
-  return new Map(rows.map((row) => [drawKey(row), row]));
+  const rows = await listDraws(2000);
+  return new Map(rows.map((row) => [row.period, row]));
 }
 
 export async function GET(request: Request) {
@@ -133,14 +119,8 @@ export async function GET(request: Request) {
     if (!member) {
       return Response.json({ error: "請先登入會員。" }, { status: 401 });
     }
-    await ensureMemberTables();
 
-    const rows = await getDb()
-      .select()
-      .from(memberPredictions)
-      .where(eq(memberPredictions.memberId, member.id))
-      .orderBy(desc(memberPredictions.createdAt), desc(memberPredictions.id))
-      .limit(100);
+    const rows = await listPredictions(member.id, 100);
     const drawMap = await loadDrawMap();
 
     return Response.json({
@@ -160,15 +140,13 @@ export async function POST(request: Request) {
   try {
     const member = await getCurrentMember(request);
     if (!member) {
-      return Response.json({ error: "請先登入會員再保存預測。" }, { status: 401 });
+      return Response.json({ error: "請先登入會員，才能保存預測。" }, { status: 401 });
     }
-    await ensureMemberTables();
 
     const payload = (await request.json()) as IncomingPrediction;
     const prediction = validatePrediction(payload);
-    const db = getDb();
 
-    await db.insert(memberPredictions).values({
+    const saved = await createPrediction({
       memberId: member.id,
       period: prediction.period,
       drawDate: prediction.drawDate,
@@ -178,18 +156,6 @@ export async function POST(request: Request) {
       excludedJson: JSON.stringify(prediction.excluded),
       note: prediction.note,
     });
-
-    const [saved] = await db
-      .select()
-      .from(memberPredictions)
-      .where(
-        and(
-          eq(memberPredictions.memberId, member.id),
-          eq(memberPredictions.period, prediction.period),
-        ),
-      )
-      .orderBy(desc(memberPredictions.createdAt), desc(memberPredictions.id))
-      .limit(1);
     const drawMap = await loadDrawMap();
 
     return Response.json(

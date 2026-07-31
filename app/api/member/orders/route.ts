@@ -1,8 +1,6 @@
-import { and, desc, eq } from "drizzle-orm";
-import { getDb } from "../../../../db";
-import { betOrders } from "../../../../db/schema";
 import { getCurrentMember } from "../../../lib/member-auth";
-import { ensureMemberTables, toMemberErrorMessage } from "../../../lib/member-db";
+import { toMemberErrorMessage } from "../../../lib/member-db";
+import { createOrder, listOrders, type OrderRecord } from "../../../lib/server-store";
 
 type IncomingOrder = {
   period?: string;
@@ -31,18 +29,18 @@ function validateOrder(payload: IncomingOrder) {
     : "planned";
   const note = String(payload.note ?? "").trim().slice(0, 160);
 
-  if (!period) throw new Error("請輸入期別。");
+  if (!period) throw new Error("請輸入期數。");
   if (numbers.length !== 5 || unique.size !== 5) {
     throw new Error("請選擇 5 個不重複號碼。");
   }
   if (numbers.some((number) => number < 1 || number > 39)) {
-    throw new Error("號碼必須介於 01 到 39。");
+    throw new Error("號碼範圍需要在 01 到 39。");
   }
 
   return { period, drawDate, numbers, stake, status, note };
 }
 
-function mapOrder(row: typeof betOrders.$inferSelect) {
+function mapOrder(row: OrderRecord) {
   return {
     id: row.id,
     period: row.period,
@@ -63,14 +61,8 @@ export async function GET(request: Request) {
     if (!member) {
       return Response.json({ error: "請先登入會員。" }, { status: 401 });
     }
-    await ensureMemberTables();
 
-    const rows = await getDb()
-      .select()
-      .from(betOrders)
-      .where(eq(betOrders.memberId, member.id))
-      .orderBy(desc(betOrders.createdAt), desc(betOrders.id))
-      .limit(200);
+    const rows = await listOrders(member.id, 200);
 
     return Response.json({
       member: {
@@ -91,12 +83,11 @@ export async function POST(request: Request) {
     if (!member) {
       return Response.json({ error: "請先登入會員。" }, { status: 401 });
     }
-    await ensureMemberTables();
 
     const payload = (await request.json()) as IncomingOrder;
     const order = validateOrder(payload);
 
-    await getDb().insert(betOrders).values({
+    const saved = await createOrder({
       memberId: member.id,
       period: order.period,
       drawDate: order.drawDate,
@@ -104,16 +95,9 @@ export async function POST(request: Request) {
       stake: order.stake,
       status: order.status,
       note: order.note,
+      hitCount: null,
+      prize: null,
     });
-
-    const [saved] = await getDb()
-      .select()
-      .from(betOrders)
-      .where(
-        and(eq(betOrders.memberId, member.id), eq(betOrders.period, order.period)),
-      )
-      .orderBy(desc(betOrders.createdAt), desc(betOrders.id))
-      .limit(1);
 
     return Response.json({ order: mapOrder(saved) }, { status: 201 });
   } catch (error) {

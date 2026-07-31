@@ -1,23 +1,16 @@
-import { desc, eq, and } from "drizzle-orm";
-import { env } from "cloudflare:workers";
-import { draws } from "../../../db/schema";
-import { getDb } from "../../../db";
+import { getConfigValue, listDraws, upsertDraws } from "../../lib/server-store";
 import { normalizeDraws, seedHistory, type Draw } from "../../lib/lotto-data";
 
 type IncomingRecord = Record<string, unknown>;
 
-function getSyncToken() {
+async function getSyncToken() {
   return (
-    (env as Record<string, unknown>).DRAW_SYNC_TOKEN ??
-    (env as Record<string, unknown>).LOTTO539_DRAW_SYNC_TOKEN ??
-    process.env.DRAW_SYNC_TOKEN ??
-    process.env.LOTTO539_DRAW_SYNC_TOKEN ??
-    ""
+    (await getConfigValue("DRAW_SYNC_TOKEN", "LOTTO539_DRAW_SYNC_TOKEN")) ?? ""
   );
 }
 
-function isAuthorized(request: Request) {
-  const expected = String(getSyncToken()).trim();
+async function isAuthorized(request: Request) {
+  const expected = String(await getSyncToken()).trim();
   if (!expected) return true;
 
   const auth = request.headers.get("authorization") ?? "";
@@ -31,11 +24,11 @@ function toRouteErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message : "Unexpected error";
 
   if (
-    message.includes("D1 binding") ||
     message.includes("no such table") ||
-    message.includes("draws")
+    message.includes("draws") ||
+    message.includes("cloudflare:")
   ) {
-    return "資料庫尚未啟用或資料表尚未建立。請先部署含 D1 migration 的版本。";
+    return "開獎資料庫正在準備中，已先顯示內建資料。";
   }
 
   return message;
@@ -122,7 +115,7 @@ function normalizeIncoming(record: IncomingRecord, index: number): Draw {
   }
 
   if (numbers.some((number) => number < 1 || number > 39)) {
-    throw new Error(`第 ${index + 1} 筆資料含有 01-39 以外的號碼。`);
+    throw new Error(`第 ${index + 1} 筆資料號碼需要在 01-39 範圍內。`);
   }
 
   return {
@@ -133,25 +126,9 @@ function normalizeIncoming(record: IncomingRecord, index: number): Draw {
   };
 }
 
-function mapRow(row: typeof draws.$inferSelect): Draw {
-  return {
-    period: row.period,
-    date: row.drawDate,
-    numbers: [row.n1, row.n2, row.n3, row.n4, row.n5],
-    source: row.source,
-  };
-}
-
 export async function GET() {
   try {
-    const db = getDb();
-    const rows = await db
-      .select()
-      .from(draws)
-      .where(eq(draws.game, "daily_cash"))
-      .orderBy(desc(draws.drawDate), desc(draws.period))
-      .limit(2000);
-    const data = rows.map(mapRow);
+    const data = await listDraws(2000);
 
     return Response.json({
       draws: data.length ? data : seedHistory,
@@ -170,9 +147,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    if (!isAuthorized(request)) {
+    if (!(await isAuthorized(request))) {
       return Response.json(
-        { error: "沒有授權更新開獎資料。" },
+        { error: "沒有權限更新開獎資料。" },
         { status: 401 },
       );
     }
@@ -202,38 +179,10 @@ export async function POST(request: Request) {
         ),
       ),
     );
-    const db = getDb();
-
-    for (const draw of normalized) {
-      const [n1, n2, n3, n4, n5] = draw.numbers;
-      const values = {
-        game: "daily_cash",
-        period: draw.period,
-        drawDate: draw.date,
-        n1,
-        n2,
-        n3,
-        n4,
-        n5,
-        source: draw.source ?? "api",
-        rawJson: JSON.stringify(draw),
-        updatedAt: new Date().toISOString(),
-      };
-      const existing = await db
-        .select({ id: draws.id })
-        .from(draws)
-        .where(and(eq(draws.game, "daily_cash"), eq(draws.period, draw.period)))
-        .limit(1);
-
-      if (existing[0]) {
-        await db.update(draws).set(values).where(eq(draws.id, existing[0].id));
-      } else {
-        await db.insert(draws).values(values);
-      }
-    }
+    const saved = await upsertDraws(normalized);
 
     return Response.json(
-      { saved: normalized.length, draws: normalized, source: "database" },
+      { saved: saved.length, draws: saved, source: "database" },
       { status: 201 },
     );
   } catch (error) {

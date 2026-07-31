@@ -1,12 +1,9 @@
-import { eq } from "drizzle-orm";
-import { getDb } from "../../../../db";
-import { memberSessions } from "../../../../db/schema";
 import {
   clearSessionCookie,
   parseCookie,
   SESSION_COOKIE,
 } from "../../../lib/member-auth";
-import { ensureMemberTables } from "../../../lib/member-db";
+import { deleteSession } from "../../../lib/server-store";
 
 async function sha256(value: string) {
   const digest = await crypto.subtle.digest(
@@ -20,14 +17,10 @@ async function sha256(value: string) {
 }
 
 export async function POST(request: Request) {
-  await ensureMemberTables();
-
   const token = parseCookie(request.headers.get("cookie"), SESSION_COOKIE);
   if (token) {
     const tokenHash = await sha256(token);
-    await getDb()
-      .delete(memberSessions)
-      .where(eq(memberSessions.tokenHash, tokenHash));
+    await deleteSession(tokenHash);
   }
 
   return Response.json(

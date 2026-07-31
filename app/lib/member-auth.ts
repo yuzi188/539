@@ -1,7 +1,5 @@
-import { and, eq, gt } from "drizzle-orm";
-import { getDb } from "../../db";
-import { memberSessions, members } from "../../db/schema";
 import { ensureMemberTables } from "./member-db";
+import { createMemberSession, findMemberBySession } from "./server-store";
 
 export const SESSION_COOKIE = "lotto539_member_session";
 const SESSION_DAYS = 30;
@@ -84,11 +82,7 @@ export async function createSession(memberId: number) {
     Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  await getDb().insert(memberSessions).values({
-    memberId,
-    tokenHash,
-    expiresAt,
-  });
+  await createMemberSession(memberId, tokenHash, expiresAt);
 
   return { token, expiresAt };
 }
@@ -123,25 +117,5 @@ export async function getCurrentMember(request: Request) {
 
   const tokenHash = await sha256(token);
   const now = new Date().toISOString();
-  const db = getDb();
-  const [session] = await db
-    .select()
-    .from(memberSessions)
-    .where(
-      and(
-        eq(memberSessions.tokenHash, tokenHash),
-        gt(memberSessions.expiresAt, now),
-      ),
-    )
-    .limit(1);
-
-  if (!session) return null;
-
-  const [member] = await db
-    .select()
-    .from(members)
-    .where(eq(members.id, session.memberId))
-    .limit(1);
-
-  return member ?? null;
+  return findMemberBySession(tokenHash, now);
 }
