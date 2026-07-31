@@ -141,6 +141,7 @@ export default function Home() {
   const [history, setHistory] = useState<Draw[]>(fallbackHistory);
   const [dataSource, setDataSource] = useState("示範資料");
   const [betAmount, setBetAmount] = useState(50);
+  const [isLatestFiveOpen, setIsLatestFiveOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -263,27 +264,38 @@ export default function Home() {
                 </span>
               ))}
             </div>
-            <div className="latest-draw-list" aria-label="近5期開獎紀錄">
+            <div className={`latest-draw-list ${isLatestFiveOpen ? "open" : ""}`} aria-label="近5期開獎紀錄">
               <div className="latest-list-title">
-                <span>近 5 期紀錄</span>
+                <button
+                  aria-expanded={isLatestFiveOpen}
+                  onClick={() => setIsLatestFiveOpen((value) => !value)}
+                  type="button"
+                >
+                  <span>近 5 期紀錄</span>
+                  <strong>{isLatestFiveOpen ? "收合" : "展開"}</strong>
+                </button>
                 <a href="/history">全部歷史</a>
               </div>
-              {latestFive.map((draw) => (
-                <article className="latest-draw-row" key={draw.period}>
-                  <div>
-                    <strong>第 {draw.period} 期</strong>
-                    <span>{draw.date}</span>
-                  </div>
-                  <div className="balls-row mini">
-                    {draw.numbers.map((number) => (
-                      <span className="ball tiny" key={`${draw.period}-${number}`}>
-                        {pad(number)}
-                      </span>
-                    ))}
-                  </div>
-                  <b>{sum(draw.numbers)}</b>
-                </article>
-              ))}
+              {isLatestFiveOpen ? (
+                <div className="latest-draw-items">
+                  {latestFive.map((draw) => (
+                    <article className="latest-draw-row" key={draw.period}>
+                      <div>
+                        <strong>第 {draw.period} 期</strong>
+                        <span>{draw.date}</span>
+                      </div>
+                      <div className="balls-row mini">
+                        {draw.numbers.map((number) => (
+                          <span className="ball tiny" key={`${draw.period}-${number}`}>
+                            {pad(number)}
+                          </span>
+                        ))}
+                      </div>
+                      <b>{sum(draw.numbers)}</b>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

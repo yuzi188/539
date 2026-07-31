@@ -247,6 +247,8 @@ a {
 .latest-draw-list {
   display: grid;
   gap: 8px;
+  border-top: 1px solid rgba(55, 45, 30, 0.1);
+  padding-top: 10px;
 }
 
 .latest-list-title,
@@ -263,9 +265,46 @@ a {
   font-weight: 900;
 }
 
+.latest-list-title button {
+  display: inline-flex;
+  min-height: 38px;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(12, 128, 100, 0.16);
+  border-radius: 8px;
+  background: rgba(12, 128, 100, 0.08);
+  color: #0a6f58;
+  cursor: pointer;
+  padding: 0 12px;
+  font: inherit;
+}
+
+.latest-list-title button:hover {
+  background: rgba(12, 128, 100, 0.12);
+}
+
+.latest-list-title button strong::after {
+  content: "+";
+  margin-left: 6px;
+}
+
+.latest-draw-list.open .latest-list-title button strong::after {
+  content: "-";
+}
+
 .latest-list-title a {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
   color: #0a6f58;
   text-decoration: none;
+}
+
+.latest-draw-items {
+  display: grid;
+  gap: 8px;
 }
 
 .latest-draw-row {
